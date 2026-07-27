@@ -1,0 +1,2687 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>РНП Ozon — ежедневный дашборд</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-auth-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-firestore-compat.min.js"></script>
+<style>
+:root{
+  --bg:#f4f5f7;
+  --panel:#ffffff;
+  --ink:#1b2338;
+  --ink-dim:#5b6478;
+  --line:#e2e4ea;
+  --navy:#1f2a44;
+  --navy-2:#2c3a5e;
+  --accent:#1e6f8a;
+  --good:#1e8a6e;
+  --bad:#c8483a;
+  --amber:#b8791f;
+  --mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  --c-orders:#eaf1fb;    --b-orders:#6f9bd1;
+  --c-sales:#eafaf5;     --b-sales:#3fae8f;
+  --c-products:#fdf3e4;  --b-products:#d9a552;
+  --c-inside:#f2eefb;    --b-inside:#8b6fd1;
+  --c-outside:#fbeef0;   --b-outside:#d16f86;
+  --c-selfbuy:#eef1f5;   --b-selfbuy:#7c8798;
+  --c-result:#eaf7ee;    --b-result:#4a9a5c;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--sans);}
+::-webkit-scrollbar{height:10px;width:10px;}
+::-webkit-scrollbar-thumb{background:#c7cbd6;border-radius:6px;}
+::-webkit-scrollbar-track{background:transparent;}
+
+a{color:inherit;}
+button{font-family:var(--sans);cursor:pointer;}
+input,select{font-family:var(--sans);}
+
+/* ---------- Header ---------- */
+.topbar{
+  background:linear-gradient(135deg,var(--navy) 0%,var(--navy-2) 100%);
+  color:#fff;
+  padding:18px 28px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:12px;
+}
+.brand{display:flex;align-items:baseline;gap:10px;}
+.brand .mark{
+  font-family:var(--mono);
+  font-size:12px;
+  letter-spacing:.14em;
+  background:rgba(255,255,255,.12);
+  padding:4px 8px;
+  border-radius:4px;
+  color:#9fd8ec;
+}
+.brand h1{font-size:19px;font-weight:650;margin:0;letter-spacing:-.01em;}
+.brand .sub{font-size:12.5px;color:#b7c0d6;margin-top:2px;}
+
+/* ---------- Section switcher (раздел = отдельный маркетплейс/аккаунт) ---------- */
+.section-bar-wrap{
+  background:#eef0f5;
+  border-bottom:1px solid var(--line);
+  padding:10px 24px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.section-bar{display:flex;gap:8px;flex-wrap:wrap;}
+.section-btn{
+  background:#fff;border:1px solid var(--line);border-radius:8px;
+  padding:8px 16px;font-size:13px;font-weight:650;color:var(--ink-dim);
+  letter-spacing:.02em;text-transform:uppercase;
+}
+.section-btn:hover{border-color:var(--accent);color:var(--accent);}
+.section-btn.active.type-ozon{
+  background:#3b82f6;border-color:#3b82f6;color:#fff;
+}
+.section-btn.active.type-help{
+  background:var(--navy);border-color:var(--navy);color:#fff;
+}
+.section-btn.active.type-wb{
+  background:#7c3aed;border-color:#7c3aed;color:#fff;
+}
+.section-btn.active.type-ym{
+  background:#d97706;border-color:#d97706;color:#fff;
+}
+.section-btn.active.type-site{
+  background:#1e8a6e;border-color:#1e8a6e;color:#fff;
+}
+.section-btn.active.type-catalog{
+  background:var(--navy);border-color:var(--navy);color:#fff;
+}
+
+/* ---------- Tabs ---------- */
+.tabs{
+  display:flex;
+  gap:2px;
+  background:var(--panel);
+  border-bottom:1px solid var(--line);
+  padding:0 24px;
+  overflow-x:auto;
+}
+.tab-btn{
+  background:none;border:none;
+  padding:13px 16px 11px;
+  font-size:13.5px;font-weight:560;
+  color:var(--ink-dim);
+  border-bottom:2.5px solid transparent;
+  white-space:nowrap;
+}
+.tab-btn.active{color:var(--navy);border-bottom-color:var(--accent);}
+.tab-btn:hover{color:var(--navy);}
+
+.wrap{max-width:1600px;margin:0 auto;padding:22px 24px 60px;}
+.panel{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:20px 22px;
+  margin-bottom:18px;
+}
+.panel h2{font-size:15px;margin:0 0 4px;font-weight:650;}
+.panel .desc{font-size:12.5px;color:var(--ink-dim);margin:0 0 16px;}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+
+/* ---------- Save button w/ indicator ---------- */
+.save-btn{
+  background:var(--navy);color:#fff;border:none;border-radius:7px;padding:8px 16px;
+  font-size:12.5px;font-weight:600;min-width:112px;transition:background .15s;
+}
+.save-btn:disabled{opacity:.85;cursor:default;}
+.save-btn.saved{background:var(--good);}
+
+/* ---------- Product catalog ---------- */
+.product-list{display:flex;flex-direction:column;gap:10px;margin-bottom:18px;}
+.product-card{
+  background:#f7f8fb;border:1px solid var(--line);border-radius:9px;padding:12px 14px;
+}
+.pc-head{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.pc-name{font-size:13.5px;font-weight:640;}
+.pc-del{background:none;border:none;color:var(--bad);font-size:16px;line-height:1;padding:2px 6px;}
+.pc-cost-row{display:flex;align-items:baseline;gap:8px;margin-top:4px;flex-wrap:wrap;}
+.pc-cost-now{font-family:var(--mono);font-size:14px;font-weight:650;color:var(--navy);}
+.pc-cost-since{font-size:11.5px;color:var(--ink-dim);}
+.pc-toggle{
+  background:none;border:1px solid var(--line);border-radius:6px;padding:5px 10px;
+  font-size:11.5px;color:var(--accent);font-weight:560;margin-top:8px;
+}
+.pc-edit-form{display:none;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);}
+.pc-edit-form.open{display:flex;}
+.pc-edit-form input{border:1px solid var(--line);border-radius:7px;padding:7px 9px;font-size:12.5px;font-family:var(--mono);}
+.pc-edit-form input[type=date]{width:150px;}
+.pc-edit-form input[type=number]{width:130px;}
+.pc-history{margin-top:8px;font-size:11px;color:var(--ink-dim);font-family:var(--mono);line-height:1.6;}
+.pc-articles{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);}
+.pc-articles-title{font-size:11px;color:var(--ink-dim);margin-bottom:6px;}
+.pc-article-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
+.pc-article-row label{font-size:11.5px;color:var(--ink-dim);min-width:170px;}
+.pc-article-row input{border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-size:12px;font-family:var(--mono);width:160px;}
+
+.add-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.add-row input{
+  border:1px solid var(--line);border-radius:7px;padding:8px 10px;font-size:13px;
+}
+.add-row input[name=pname]{width:220px;}
+.add-row input[name=pcost]{width:140px;}
+.add-row button{
+  background:var(--navy);color:#fff;border:none;border-radius:7px;padding:8px 16px;font-size:13px;font-weight:560;
+}
+
+/* ---------- Tax rate box ---------- */
+.tax-box{
+  background:#f7f8fb;border:1px solid var(--line);border-radius:9px;padding:14px 16px;
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px;
+}
+.tax-box .cur{font-size:12.5px;color:var(--ink-dim);}
+.tax-box .cur b{color:var(--navy);font-family:var(--mono);font-size:14px;}
+.tax-box input[type=number]{
+  width:110px;border:1px solid var(--line);border-radius:7px;padding:8px 10px;font-family:var(--mono);font-size:13px;
+}
+
+/* ---------- Import box ---------- */
+.import-box{
+  background:#f7f8fb;border:1px solid var(--line);border-radius:9px;padding:14px 16px;margin-bottom:18px;
+}
+.import-title{font-size:13px;font-weight:650;margin-bottom:6px;}
+.import-box input[type=file]{font-size:12.5px;}
+#importReport{margin-top:12px;font-size:12.5px;}
+.import-ok{color:var(--good);font-weight:600;margin-bottom:6px;}
+.import-warn{background:#fbf6ec;border:1px solid #ecdcb5;border-radius:7px;padding:10px 12px;margin-top:8px;color:#8a5f13;}
+.import-err{background:#fbeef0;border:1px solid #edc3cc;border-radius:7px;padding:10px 12px;color:var(--bad);white-space:pre-wrap;font-family:var(--mono);font-size:11.5px;}
+.import-table{width:100%;border-collapse:collapse;margin-top:8px;font-size:12px;}
+.import-table th, .import-table td{padding:5px 9px;border-bottom:1px solid var(--line);text-align:right;font-family:var(--mono);}
+.import-table th:first-child, .import-table td:first-child{text-align:left;font-family:var(--sans);}
+
+/* ---------- Month selector ---------- */
+.month-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+.month-bar select{
+  border:1px solid var(--line);border-radius:7px;padding:8px 12px;font-size:13px;background:#fff;
+}
+.month-bar input[type=month]{
+  border:1px solid var(--line);border-radius:7px;padding:8px 12px;font-size:13px;background:#fff;font-family:var(--sans);
+}
+.month-bar button{
+  background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:8px 13px;font-size:12.5px;font-weight:550;
+}
+.month-bar .spacer{flex:1;}
+
+/* ---------- transposed table ---------- */
+.table-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;max-height:72vh;overflow-y:auto;}
+table.daily{border-collapse:collapse;width:100%;font-size:12px;}
+table.daily th, table.daily td{
+  padding:6px 9px;border-bottom:1px solid var(--line);border-right:1px solid #edeef2;
+  white-space:nowrap;text-align:right;
+}
+table.daily td.metric-label, table.daily th.metric-col{
+  text-align:left;position:sticky;left:0;background:#fff;z-index:2;font-weight:560;
+}
+table.daily thead th{
+  color:var(--ink-dim);font-weight:600;font-size:11px;
+  position:sticky;top:0;z-index:3;background:#fff;
+}
+table.daily thead th.metric-col{z-index:4;}
+table.daily input{
+  width:100%; box-sizing:border-box; border:1px solid transparent; background:transparent; text-align:right;
+  font-family:var(--mono); font-size:12px; border-radius:0; padding:6px 9px; margin:0;
+  vertical-align:middle;
+}
+table.daily td:has(input){ padding:0; }
+table.daily input::-webkit-outer-spin-button,
+table.daily input::-webkit-inner-spin-button{
+  -webkit-appearance:none; margin:0;
+}
+table.daily input[type=number]{ -moz-appearance:textfield; appearance:textfield; }
+table.daily input:focus{border-color:var(--accent);background:#fff;outline:none;}
+table.daily td.calc{font-family:var(--mono);color:var(--ink-dim);}
+table.daily td.calc.pos{color:var(--good);}
+table.daily td.calc.neg{color:var(--bad);}
+table.daily .day-head-inner{text-align:center;font-weight:650;color:var(--navy);font-size:12px;}
+
+/* group divider rows */
+tr.grp-divider td{
+  font-weight:700;font-size:11px;color:var(--navy);text-transform:uppercase;letter-spacing:.03em;
+  text-align:left;padding:7px 9px;position:sticky;left:0;
+}
+tr.grp-divider.grp-orders td{background:var(--c-orders);border-left:4px solid var(--b-orders);}
+tr.grp-divider.grp-sales td{background:var(--c-sales);border-left:4px solid var(--b-sales);}
+tr.grp-divider.grp-products td{background:var(--c-products);border-left:4px solid var(--b-products);}
+tr.grp-divider.grp-inside td{background:var(--c-inside);border-left:4px solid var(--b-inside);}
+tr.grp-divider.grp-outside td{background:var(--c-outside);border-left:4px solid var(--b-outside);}
+tr.grp-divider.grp-selfbuy td{background:var(--c-selfbuy);border-left:4px solid var(--b-selfbuy);}
+tr.grp-divider.grp-result td{background:var(--c-result);border-left:4px solid var(--b-result);}
+
+tr.row-orders td.metric-label{background:var(--c-orders);}
+tr.row-sales td.metric-label{background:var(--c-sales);}
+tr.row-products td.metric-label{background:var(--c-products);}
+tr.row-inside td.metric-label{background:var(--c-inside);}
+tr.row-outside td.metric-label{background:var(--c-outside);}
+tr.row-selfbuy td.metric-label{background:var(--c-selfbuy);}
+tr.row-result td.metric-label{background:var(--c-result);}
+
+/* ---------- Waterfall / summary ---------- */
+.waterfall{display:flex;flex-wrap:wrap;gap:0;margin:6px 0 4px;}
+.wf-step{
+  flex:1 1 150px;min-width:150px;
+  border-left:3px solid var(--ink-dim);
+  padding:8px 14px;
+}
+.wf-step .lbl{font-size:11px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.03em;font-weight:600;}
+.wf-step .val{font-family:var(--mono);font-size:19px;font-weight:650;margin-top:3px;}
+.wf-step.good{border-left-color:var(--good);}
+.wf-step.good .val{color:var(--good);}
+.wf-step.bad{border-left-color:var(--bad);}
+.wf-step.bad .val{color:var(--bad);}
+.wf-step.tax{border-left-color:var(--amber);}
+.wf-step.tax .val{color:var(--amber);}
+.wf-step.final{border-left-color:var(--navy);}
+.wf-step.final .val{color:var(--navy);}
+
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:14px;}
+.kpi{background:#f6f7fa;border:1px solid var(--line);border-radius:8px;padding:12px 14px;}
+.kpi .lbl{font-size:11px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.03em;}
+.kpi .val{font-family:var(--mono);font-size:18px;font-weight:650;margin-top:4px;}
+
+/* ---------- Analysis table ---------- */
+.table-scroll.analysis{max-height:none;}
+table.analysis-tbl{border-collapse:collapse;width:100%;font-size:12.5px;}
+table.analysis-tbl th, table.analysis-tbl td{
+  padding:8px 12px;border-bottom:1px solid var(--line);border-right:1px solid #edeef2;
+  text-align:right;white-space:nowrap;
+}
+table.analysis-tbl td:first-child, table.analysis-tbl th:first-child{text-align:left;font-weight:560;}
+table.analysis-tbl thead th{background:#f6f7fa;color:var(--ink-dim);font-weight:650;font-size:11px;
+  text-transform:uppercase;letter-spacing:.03em;text-align:center;}
+table.analysis-tbl thead tr.grp th{background:#eef0f5;color:var(--navy);}
+table.analysis-tbl td.money{font-family:var(--mono);}
+table.analysis-tbl td.pct{font-family:var(--mono);font-weight:600;}
+
+.empty-state{
+  text-align:center;padding:40px 20px;color:var(--ink-dim);font-size:13px;
+}
+h3.subhead{font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-dim);margin:22px 0 10px;font-weight:650;}
+</style>
+</head>
+<body>
+
+<div id="loginScreen" style="display:none;max-width:380px;margin:90px auto;padding:0 20px;">
+  <div class="panel">
+    <h1 style="font-size:18px;margin:0 0 4px;">Вход в дашборд</h1>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:12px;color:var(--ink-dim);display:block;margin-bottom:4px;">Email</label>
+      <input id="login_email" type="email" autocomplete="username" style="width:100%;border:1px solid var(--line);border-radius:7px;padding:9px 11px;font-size:13px;box-sizing:border-box;">
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:12px;color:var(--ink-dim);display:block;margin-bottom:4px;">Пароль</label>
+      <input id="login_password" type="password" autocomplete="current-password" style="width:100%;border:1px solid var(--line);border-radius:7px;padding:9px 11px;font-size:13px;box-sizing:border-box;">
+    </div>
+    <button class="save-btn" id="loginBtn" style="width:100%;padding:10px;">Войти</button>
+    <div id="loginError" style="color:var(--bad);margin-top:10px;font-size:12.5px;"></div>
+  </div>
+</div>
+
+<div id="mainApp" style="display:none;">
+
+<div id="fbStatusBanner" style="display:none;background:var(--c-outside);color:var(--bad);padding:10px 16px;font-size:13px;border-bottom:1px solid var(--b-outside);"></div>
+
+<div class="topbar">
+  <div class="brand">
+    <div>
+      <h1>РНП · Дашборд ежедневного учёта</h1>
+    </div>
+  </div>
+  <div id="userBar" style="display:none;align-items:center;gap:10px;font-size:12.5px;color:#c7cde0;">
+    <span id="userEmailLabel"></span>
+    <button id="logoutBtn" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;padding:6px 12px;border-radius:7px;font-size:12px;cursor:pointer;">Выйти</button>
+  </div>
+</div>
+
+
+<div class="section-bar-wrap">
+  <div class="section-bar" id="sectionBar"></div>
+  <div style="display:flex;gap:8px;">
+    <button class="section-btn type-catalog" id="productsToggleBtn" onclick="toggleProducts()">Товары</button>
+    <button class="section-btn type-help" id="helpToggleBtn" onclick="toggleHelp()">Справка</button>
+  </div>
+</div>
+
+<div class="tabs" id="tabsBar">
+  <button class="tab-btn active" data-tab="daily">Ежедневные данные</button>
+  <button class="tab-btn" data-tab="summary">Итоги / P&amp;L</button>
+</div>
+
+<div class="wrap" id="mainWrap">
+
+  <!-- ===================== DAILY TAB ===================== -->
+  <div class="tab-content active" id="tab-daily">
+    <div class="panel">
+      <h2>Ежедневные данные</h2>
+      <p class="desc">Заполняется по дням. ДРР%, себестоимость проданного, доход на р/с, маржа и чистая прибыль считаются автоматически.</p>
+
+      <div class="tax-box">
+        <span class="cur">Текущая ставка налога: <b id="taxCurrentLabel">—</b></span>
+        <input type="number" id="taxRateInput" step="0.1" placeholder="Новая ставка, %">
+        <button class="save-btn" id="saveTaxBtn" onclick="saveTaxRate()">Сохранить</button>
+        <span class="cur" style="color:var(--ink-dim);">Применяется с даты сохранения</span>
+      </div>
+
+      <div class="import-box" id="importBoxOzon">
+        <div class="import-title">Импорт из отчёта Ozon «Начисления» (.xlsx)</div>
+        <p class="desc" style="margin-bottom:10px;">Путь к файлу в личном кабинете: Финансы → Экономика магазина → Отчёт по начислениям, период 1 день.<br>Файл разносится по дням автоматически: Продажа, Вознаграждение, Логистика, Хранение, Прочее и Реклама берутся из соответствующих типов начисления, товары сопоставляются по SKU (укажите SKU в карточке товара во вкладке «Товары»). Если Ozon переименует или добавит новый тип начисления, дашборд сам спросит, куда его отнести, и запомнит выбор на будущее.</p>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <input type="file" id="importFileInput" accept=".xlsx">
+          <button class="save-btn" id="importBtn" onclick="handleImportFile()">Импортировать</button>
+        </div>
+        <div id="importReport"></div>
+        <div id="knownMappings"></div>
+      </div>
+
+      <div class="import-box" id="importBoxWB">
+        <div class="import-title">Импорт из отчёта WB «Продажи» (.xlsx)</div>
+        <p class="desc" style="margin-bottom:10px;">Путь к файлу в личном кабинете: Аналитика → Отчёты → Продажи, период 1 день.<br>Из файла берётся только количество «Выкупили, шт.» по каждому артикулу — оно суммируется по всем складам за день и подставляется в строки товаров (себестоимость проданного считается от этого количества, как на Ozon). Товары сопоставляются по полю «Артикул WB» в карточке товара во вкладке «Товары». Остальные показатели (продажа, логистика, штрафы и т.д.) заполняются вручную. Отчёт должен быть за один день.</p>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <input type="file" id="importFileInputWB" accept=".xlsx">
+          <button class="save-btn" id="importBtnWB" onclick="handleImportFileWB()">Импортировать</button>
+        </div>
+        <div id="importReportWB"></div>
+      </div>
+
+      <div class="month-bar">
+        <select id="monthSelect" onchange="setSelectedMonth(this.value); renderDaily();"></select>
+        <button onclick="addMonth()">+ Добавить месяц</button>
+        <div class="spacer"></div>
+        <span style="font-size:12px;color:var(--ink-dim);" id="monthHint"></span>
+      </div>
+      <div class="table-scroll" id="dailyTableWrap"></div>
+    </div>
+  </div>
+
+  <!-- ===================== SUMMARY TAB ===================== -->
+  <div class="tab-content" id="tab-summary">
+    <div class="panel">
+      <h2>Итоги за месяц</h2>
+      <div class="month-bar">
+        <select id="monthSelectSum" onchange="setSelectedMonth(this.value); renderSummary();"></select>
+      </div>
+      <div id="summaryBody"></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="wrap" id="productsPanel" style="display:none;">
+  <div class="panel">
+    <h2>Каталог товаров</h2>
+    <p class="desc">Общий для всех разделов, где считается себестоимость (Ozon SEKAI, Ozon MELD, WB SEKAI, Сайт) — товар и его себестоимость вводятся один раз, а не отдельно на каждой площадке. Себестоимость может меняться от закупки к закупке: при изменении расчёт пересчитывается с указанной даты — все дни до неё считаются по старой себестоимости, все дни от неё и позже — по новой. Для сопоставления с выгрузками при импорте у каждого товара свой артикул на каждой площадке (задаются отдельно ниже).</p>
+    <div class="product-list" id="productList"></div>
+    <div class="add-row">
+      <input type="text" name="pname" id="newPName" placeholder="Название товара">
+      <input type="number" name="pcost" id="newPCost" placeholder="Себестоимость, ₽" step="0.01">
+      <button onclick="addProduct()">+ Добавить товар</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap" id="helpPanel" style="display:none;">
+  <div class="panel">
+    <h2>Справка</h2>
+    <p class="desc">Как устроен дашборд и что означают показатели. Одинакова для всех разделов. Обновляется вместе с изменением логики.</p>
+
+    <h3 class="subhead">Разделы</h3>
+    <p class="desc">Переключатель наверху («OZON SEKAI», «OZON MELD», «WB SEKAI», «ЯМ SEKAI», «ЯМ MELD», «Сайт») — это полностью независимые наборы данных: свои товары, свои дни, своя ставка налога.</p>
+
+    <h3 class="subhead">Товары и себестоимость</h3>
+    <p class="desc">Есть на Ozon, WB и «Сайте» — там себестоимость проданного считается по количеству и датированной себестоимости товара. У ЯМ товарного каталога нет: себестоимость проданного вводится вручную одной суммой за день. Себестоимость товара можно скорректировать с указанием даты — все дни ДО этой даты считаются по старой себестоимости, все дни ОТ неё и позже — по новой.</p>
+
+    <h3 class="subhead">Ставка налога</h3>
+    <p class="desc">Задаётся на вкладке «Ежедневные данные», действует так же, как себестоимость — с даты сохранения.</p>
+
+    <h3 class="subhead">Ежедневные данные</h3>
+    <p class="desc">Таблица заполняется по дням — при выборе месяца дни создаются автоматически. Tab/Shift+Tab внутри таблицы переходит на соседнюю строку того же дня (вниз/вверх), а не на соседний день. Если в ячейке было «0» — при клике оно сразу очищается, а если ничего не ввести и уйти с поля — вернётся обратно к «0».</p>
+
+    <h3 class="subhead">Импорт (Ozon)</h3>
+    <p class="desc">На вкладке «Ежедневные данные» — загрузка отчёта Ozon «Начисления» (.xlsx).<br>Путь к файлу: Финансы → Экономика магазина → Отчёт по начислениям, период 1 день.<br>Продажа, Вознаграждение, Логистика, Хранение, Прочее и Реклама разносятся по дням автоматически, товары сопоставляются по SKU (указывается в карточке товара). Если Ozon переименует или добавит новый тип начисления — дашборд остановит импорт, спросит, в какое поле его отнести, и запомнит выбор.</p>
+
+    <h3 class="subhead">Импорт (WB)</h3>
+    <p class="desc">Загружается отчёт WB «Продажи».<br>Путь к файлу: Аналитика → Отчёты → Продажи, период 1 день.<br>Из файла берётся только «Выкупили, шт.» по каждому артикулу (суммируется по всем складам), дата — из заголовка файла. Товары сопоставляются по полю «Артикул WB» в карточке товара. Отчёт должен быть за один день — за более длинный период построчных дат нет, импорт не сработает.</p>
+
+    <h3 class="subhead">Показатели в «Итоги / P&amp;L»</h3>
+    <p class="desc">Продажа → Доход на р/с (за вычетом расходов внутри площадки) → Маржа (минус себестоимость и самовыкупы) → Операционная прибыль, EBITDA (минус налог) → Чистая прибыль (минус расходы за пределами площадки: фулфилмент, ФОТ, аренда и т.п.).</p>
+
+    <h3 class="subhead">Кто вносит данные</h3>
+    <p class="desc">Вход по логину и паролю сотрудника — те же учётные данные, что и в «Воронке продаж». Новых сотрудников заводит администратор вручную в Firebase Console (Authentication → Users) — самостоятельная регистрация недоступна.</p>
+  </div>
+</div>
+
+</div><!-- /mainApp -->
+
+<script>
+/* ======================= STATE ======================= */
+
+/* ================== ПЕРЕКЛЮЧАТЕЛЬ ХРАНИЛИЩА ==================
+   true  — Firebase (для рабочей версии на GitHub Pages)
+   false — window.storage (для быстрых тестов прямо в Claude.ai)
+   Перед заливкой на GitHub Pages поставь true. */
+const USE_FIREBASE = true;
+/* ================================================================ */
+
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCATxnU6PHqW9YjkuFW9UYedvD7nLdG2bs",
+  authDomain: "voronka-prodazh-sekai-meld.firebaseapp.com",
+  projectId: "voronka-prodazh-sekai-meld",
+  storageBucket: "voronka-prodazh-sekai-meld.firebasestorage.app",
+  messagingSenderId: "95056188106",
+  appId: "1:95056188106:web:e4488440af501b7813da33"
+};
+
+// Тот же Firebase-проект, что и у «Воронки продаж» — логины сотрудников общие.
+// Коллекция своя, чтобы данные разных дашбордов не пересекались в одной базе.
+const FIRESTORE_COLLECTION = 'app_data_rnp_dashboard';
+
+let fbReadyPromise = null;
+function showFbError(msg){
+  const b = document.getElementById('fbStatusBanner');
+  b.textContent = msg; b.style.display = 'block';
+}
+function hideFbError(){
+  document.getElementById('fbStatusBanner').style.display = 'none';
+}
+function initFirebase(){
+  if(fbReadyPromise) return fbReadyPromise;
+  fbReadyPromise = new Promise((resolve, reject)=>{
+    try{
+      if(typeof firebase === 'undefined'){
+        throw new Error('библиотека Firebase не загрузилась (проблема с подключением скрипта, не с настройками)');
+      }
+      if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+      hideFbError();
+      resolve(firebase.firestore());
+    }catch(e){
+      showFbError('Не удалось подключиться к базе данных: '+e.message);
+      reject(e);
+    }
+  });
+  return fbReadyPromise;
+}
+
+async function storeGet(key){
+  if(!USE_FIREBASE){
+    try{ const r = await window.storage.get(key, false); return r ? JSON.parse(r.value) : null; }
+    catch(e){ return null; }
+  }
+  try{
+    const db = await initFirebase();
+    const doc = await db.collection(FIRESTORE_COLLECTION).doc(key).get();
+    if(!doc.exists) return null;
+    const data = doc.data();
+    return (data && data.v!==undefined) ? JSON.parse(data.v) : null;
+  }catch(e){ console.error('storage get failed', key, e); return null; }
+}
+async function storeSet(key, val){
+  if(!USE_FIREBASE){
+    for(let attempt=0; attempt<2; attempt++){
+      try{ const r = await window.storage.set(key, JSON.stringify(val), false); if(r) return true; }
+      catch(e){ console.error('storage set failed', key, e); }
+      if(attempt===0) await new Promise(res=>setTimeout(res,600));
+    }
+    return false;
+  }
+  for(let attempt=0; attempt<2; attempt++){
+    try{
+      const db = await initFirebase();
+      await db.collection(FIRESTORE_COLLECTION).doc(key).set({v: JSON.stringify(val)});
+      return true;
+    }catch(e){ console.error('storage set failed', key, e); }
+    if(attempt===0) await new Promise(res=>setTimeout(res,600));
+  }
+  return false;
+}
+
+const EXTERNAL_FIELDS = [
+  ['fulfillment','Услуги фулфилмента'],
+  ['extLogistics','Внешняя логистика'],
+  ['hr','HR'],
+  ['rko','РКО'],
+  ['fot','ФОТ'],
+  ['rent','Аренда'],
+  ['other','Прочие'],
+  ['packaging','Упаковка'],
+  ['payrollTax','Налоги с ФОТ'],
+  ['honestSign','Честный Знак, КиЗы, гос. пошлины'],
+  ['certification','Сертификация и регистрация ТМ'],
+  ['infographics','Инфографика, дизайн, фото/видео'],
+  ['connection','Связь и интернет'],
+  ['services','Сервисы, ПО'],
+  ['registration','Регистрация ИП/ООО'],
+  ['representation','Представительские расходы'],
+  ['extMarketing','Внешняя реклама и маркетинг'],
+  ['loanInterest','Займ (выплата процентов)']
+];
+
+function defaultSectionState(){
+  return {
+    products: [],
+    taxRateHistory: [{date:'1970-01-01', rate:7}],
+    customTypeMap: {}, // "Тип начисления" из выгрузки Ozon -> целевое поле (запоминается один раз)
+    months: {}   // key "YYYY-MM" -> { days:[...] }
+  };
+}
+
+// Конфигурация разделов дашборда.
+const SECTIONS_CONFIG = [
+  {id:'ozon_sekai', label:'OZON SEKAI', type:'ozon'},
+  {id:'ozon_meld',  label:'OZON MELD',  type:'ozon'},
+  {id:'wb_sekai',   label:'WB SEKAI',   type:'wb'},
+  {id:'ym_sekai',   label:'ЯМ SEKAI',   type:'ym'},
+  {id:'ym_meld',    label:'ЯМ MELD',    type:'ym'},
+  {id:'site',       label:'Сайт',       type:'site'},
+];
+function getSectionConfig(id){ return SECTIONS_CONFIG.find(s=>s.id===id); }
+function activeSectionType(){ return (getSectionConfig(rootState.activeSectionId)||{}).type || 'ozon'; }
+
+// Ключ раздела в Firestore/window.storage.
+function sectionStoreKey(id){ return 'section:'+id; }
+
+// "Последний открытый раздел" — личное удобство браузера, не общие данные,
+// поэтому хранится локально и не идёт в Firestore.
+const LAST_SECTION_KEY = 'rnp_dashboard_last_section';
+
+let rootState = null;
+let state = null;
+let sharedProducts = [];
+
+// Разделы, для которых у товара есть свой код артикула (нужен для сопоставления при импорте).
+const PRODUCT_ARTICLE_SECTIONS = [
+  {id:'ozon_sekai', label:'SKU (Ozon SEKAI)'},
+  {id:'ozon_meld',  label:'SKU (Ozon MELD)'},
+  {id:'wb_sekai',   label:'Артикул WB (WB SEKAI)'},
+];
+// Разделы, которые используют общий каталог товаров (для расчёта себестоимости по количеству).
+const SECTIONS_USING_PRODUCTS = ['ozon_sekai','ozon_meld','wb_sekai','site'];
+
+function defaultSharedProduct(name, cost){
+  return {
+    id: 'p'+Date.now()+Math.random().toString(36).slice(2,6),
+    name,
+    costHistory: [{date: todayStr(), cost}],
+    articles: Object.fromEntries(PRODUCT_ARTICLE_SECTIONS.map(s=>[s.id,'']))
+  };
+}
+
+function migrateSharedProduct(p){
+  if(!p.costHistory || !p.costHistory.length){
+    p.costHistory = [{date:'1970-01-01', cost: num(p.cost)}];
+  }
+  if(!p.articles) p.articles = {};
+  PRODUCT_ARTICLE_SECTIONS.forEach(s=>{ if(p.articles[s.id]===undefined) p.articles[s.id]=''; });
+  // Старое единое поле sku (до разделения по площадкам) — переносим в Ozon SEKAI по умолчанию.
+  if(p.sku!==undefined){
+    if(!p.articles.ozon_sekai) p.articles.ozon_sekai = p.sku;
+    delete p.sku;
+  }
+}
+
+// Каталог товаров теперь общий для всех разделов (себестоимость одна и та же независимо
+// от площадки продажи) — хранится отдельным документом, не внутри какого-либо раздела.
+async function loadSharedProducts(){
+  let data = await storeGet('shared:products');
+  if(!data){
+    // Одноразовая миграция: если это ещё не сделано — собираем товары из старых
+    // индивидуальных каталогов разделов (версия дашборда до общего каталога товаров).
+    const merged = [];
+    const byName = {};
+    for(const sid of SECTIONS_USING_PRODUCTS){
+      const legacy = await storeGet(sectionStoreKey(sid));
+      if(!legacy || !Array.isArray(legacy.products)) continue;
+      legacy.products.forEach(p=>{
+        let target = byName[p.name];
+        if(!target){
+          target = defaultSharedProduct(p.name, 0);
+          target.costHistory = (p.costHistory && p.costHistory.length) ? p.costHistory : [{date:'1970-01-01', cost:num(p.cost)}];
+          byName[p.name] = target;
+          merged.push(target);
+        }
+        if(p.sku) target.articles[sid] = p.sku;
+      });
+    }
+    data = merged;
+  }
+  data.forEach(migrateSharedProduct);
+  sharedProducts = data;
+}
+
+async function saveSharedProducts(){
+  const ok = await storeSet('shared:products', sharedProducts);
+  if(!ok) showFbError('Не удалось сохранить изменения в товарах — проверьте интернет-соединение.');
+  else hideFbError();
+}
+
+// Загружает все 6 разделов параллельно, применяет миграцию к каждому.
+async function loadRootAsync(){
+  const entries = await Promise.all(SECTIONS_CONFIG.map(async cfg=>{
+    let data = await storeGet(sectionStoreKey(cfg.id));
+    if(!data) data = defaultSectionState();
+    migrateSectionData(data, cfg.type);
+    return [cfg.id, data];
+  }));
+  const sections = Object.fromEntries(entries);
+  let lastSection = null;
+  try{ lastSection = localStorage.getItem(LAST_SECTION_KEY); }catch(e){}
+  const activeSectionId = (lastSection && sections[lastSection]) ? lastSection : SECTIONS_CONFIG[0].id;
+  return {activeSectionId, sections};
+}
+
+function migrateSectionData(data, sectionType){
+  if(!data.customTypeMap) data.customTypeMap = {};
+  if(!data.taxRateHistory || !data.taxRateHistory.length){
+    let rate = 7;
+    const firstMonth = Object.values(data.months||{})[0];
+    if(firstMonth && firstMonth.taxRate!==undefined) rate = firstMonth.taxRate;
+    data.taxRateHistory = [{date:'1970-01-01', rate}];
+  }
+  (data.products||[]).forEach(p=>{
+    if(!p.costHistory || !p.costHistory.length){
+      p.costHistory = [{date:'1970-01-01', cost: num(p.cost)}];
+    }
+    if(p.sku===undefined) p.sku = '';
+  });
+  Object.entries(data.months||{}).forEach(([key,month])=>{
+    (month.days||[]).forEach(day=>{
+      if(!day.external) day.external = Object.fromEntries(EXTERNAL_FIELDS.map(f=>[f[0],0]));
+      if(day.selfBuyRub===undefined) day.selfBuyRub = 0;
+      if(day.selfBuyCost===undefined) day.selfBuyCost = 0;
+    });
+    const total = daysInMonthCount(key);
+    const existingDates = new Set((month.days||[]).map(d=>d.date));
+    for(let d=1; d<=total; d++){
+      const dateStr = `${key}-${String(d).padStart(2,'0')}`;
+      if(!existingDates.has(dateStr)) month.days.push(newDayRow(dateStr, sectionType));
+    }
+    month.days.sort((a,b)=>a.date.localeCompare(b.date));
+  });
+}
+
+// Сохраняет данные ОДНОГО раздела (по умолчанию — активного). Не блокирует UI: вызывается
+// без await, обновление на экране уже произошло по локальным данным, запись в фоне.
+async function save(sectionId){
+  const id = sectionId || rootState.activeSectionId;
+  const ok = await storeSet(sectionStoreKey(id), rootState.sections[id]);
+  if(!ok) showFbError('Не удалось сохранить изменения — проверьте интернет-соединение. Последнее изменение могло не сохраниться.');
+  else hideFbError();
+}
+
+// Переключение активного раздела дашборда (OZON SEKAI / OZON MELD / ...).
+// Каждый раздел — полностью независимый набор товаров, дней, ставки налога и сопоставлений типов.
+// Единое переключение того, что видно на экране: обычный раздел, каталог товаров или справка.
+// Только один из трёх видов виден одновременно.
+function showView(mode){
+  renderSectionSwitcher();
+  if(mode!=='section'){
+    document.querySelectorAll('#sectionBar .section-btn').forEach(b=>b.classList.remove('active'));
+  }
+  document.getElementById('productsPanel').style.display = mode==='products' ? 'block' : 'none';
+  document.getElementById('helpPanel').style.display = mode==='help' ? 'block' : 'none';
+  document.getElementById('tabsBar').style.display = mode==='section' ? '' : 'none';
+  document.getElementById('mainWrap').style.display = mode==='section' ? '' : 'none';
+  document.getElementById('productsToggleBtn').classList.toggle('active', mode==='products');
+  document.getElementById('helpToggleBtn').classList.toggle('active', mode==='help');
+  if(mode==='products'){ renderProducts(); }
+}
+function toggleProducts(){
+  showView(document.getElementById('productsPanel').style.display==='block' ? 'section' : 'products');
+}
+function toggleHelp(){
+  showView(document.getElementById('helpPanel').style.display==='block' ? 'section' : 'help');
+}
+
+function switchSection(id){
+  if(rootState.sections[id] && id!==rootState.activeSectionId){
+    rootState.activeSectionId = id;
+    state = rootState.sections[id];
+    selectedMonthKey = null;      // у нового раздела свои месяцы — пересчитаем дефолт (текущий месяц)
+    pendingImportRows = null; pendingUnknownTypes = [];
+    try{ localStorage.setItem(LAST_SECTION_KEY, id); }catch(e){}
+    renderDaily(); renderSummary();
+  }
+  showView('section');
+}
+
+function renderSectionSwitcher(){
+  const el = document.getElementById('sectionBar');
+  if(!el) return;
+  el.innerHTML = SECTIONS_CONFIG.map(s=>`
+    <button class="section-btn type-${s.type} ${s.id===rootState.activeSectionId?'active':''}" onclick="switchSection('${s.id}')">${escapeHtml(s.label)}</button>
+  `).join('');
+}
+
+
+/* ======================= DATE HELPERS (UTC-safe, без сдвига по часовому поясу) ======================= */
+function todayStr(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function fmtDate(dateStr){
+  const [y,m,d] = dateStr.split('-');
+  return `${d}.${m}.${y}`;
+}
+function addDaysToDateStr(dateStr, delta){
+  const [y,m,d] = dateStr.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m-1, d));
+  dt.setUTCDate(dt.getUTCDate()+delta);
+  const yy = dt.getUTCFullYear();
+  const mm = String(dt.getUTCMonth()+1).padStart(2,'0');
+  const dd = String(dt.getUTCDate()).padStart(2,'0');
+  return `${yy}-${mm}-${dd}`;
+}
+function nextMonthKey(key){
+  const [y,m] = key.split('-').map(Number);
+  const ny = m===12 ? y+1 : y;
+  const nm = m===12 ? 1 : m+1;
+  return `${ny}-${String(nm).padStart(2,'0')}`;
+}
+
+/* ======================= COST / TAX LOOKUP (date-effective) ======================= */
+function getProductCostAt(product, dateStr){
+  const hist = (product.costHistory||[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
+  if(hist.length===0) return 0;
+  const applicable = hist.filter(h=>h.date<=dateStr);
+  if(applicable.length===0) return hist[0].cost;
+  return applicable[applicable.length-1].cost;
+}
+function getCurrentProductCost(product){
+  return getProductCostAt(product, todayStr());
+}
+function upsertCostHistory(product, dateStr, cost){
+  const hist = product.costHistory||(product.costHistory=[]);
+  const existing = hist.find(h=>h.date===dateStr);
+  if(existing) existing.cost = cost;
+  else hist.push({date:dateStr, cost});
+  hist.sort((a,b)=>a.date.localeCompare(b.date));
+}
+
+function getTaxRateAt(dateStr){
+  const hist = state.taxRateHistory.slice().sort((a,b)=>a.date.localeCompare(b.date));
+  const applicable = hist.filter(h=>h.date<=dateStr);
+  if(applicable.length===0) return hist[0].rate;
+  return applicable[applicable.length-1].rate;
+}
+function getCurrentTaxRate(){ return getTaxRateAt(todayStr()); }
+function upsertTaxRate(dateStr, rate){
+  const existing = state.taxRateHistory.find(h=>h.date===dateStr);
+  if(existing) existing.rate = rate;
+  else state.taxRateHistory.push({date:dateStr, rate});
+  state.taxRateHistory.sort((a,b)=>a.date.localeCompare(b.date));
+}
+
+/* ======================= MONTH LABEL (именительный падеж) ======================= */
+const MONTH_NAMES_NOM = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+function monthLabel(key){
+  const [y,m] = key.split('-');
+  return MONTH_NAMES_NOM[parseInt(m,10)-1] + ' ' + y;
+}
+
+function daysInMonthCount(key){
+  const [y,m] = key.split('-').map(Number);
+  return new Date(Date.UTC(y, m, 0)).getUTCDate();
+}
+
+function ensureMonth(key, sectionData, sectionType){
+  const s = sectionData || state;
+  const type = sectionType || activeSectionType();
+  if(!s.months[key]){
+    const count = daysInMonthCount(key);
+    const days = [];
+    for(let d=1; d<=count; d++){
+      days.push(newDayRow(`${key}-${String(d).padStart(2,'0')}`, type));
+    }
+    s.months[key] = { days };
+  }
+  return s.months[key];
+}
+
+function currentMonthKey(){
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+}
+
+/* ======================= SAVE BUTTON INDICATOR ======================= */
+function flashSaveButton(btn, onCommitted, onSettled){
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Сохраняю…';
+  setTimeout(()=>{
+    if(onCommitted) onCommitted();
+    save();
+    btn.textContent = 'Сохранено ✓';
+    btn.classList.add('saved');
+    setTimeout(()=>{
+      btn.disabled = false;
+      btn.classList.remove('saved');
+      btn.textContent = original;
+      if(onSettled) onSettled();
+    }, 900);
+  }, 220);
+}
+
+/* ======================= TABS ======================= */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+    if(btn.dataset.tab==='daily') renderDaily();
+    if(btn.dataset.tab==='summary') renderSummary();
+      });
+});
+
+/* ======================= DISABLE MOUSE-WHEEL VALUE CHANGE ======================= */
+// Числовые поля не должны менять значение от прокрутки колеса мыши (частая причина
+// случайных "-1" в данных). Отрицательные значения при этом остаются допустимыми —
+// просто нельзя, чтобы их создавала непреднамеренная прокрутка.
+document.addEventListener('wheel', function(e){
+  const el = document.activeElement;
+  if(el && el.tagName==='INPUT' && el.type==='number'){
+    el.blur();
+  }
+}, {passive:true});
+
+/* ======================= DAILY TABLE: UX ДЛЯ БЫСТРОГО ВВОДА ======================= */
+// При фокусе на ячейке со значением "0" сразу очищаем поле, чтобы не приходилось
+// стирать ноль вручную перед вводом нового числа.
+document.addEventListener('focus', function(e){
+  const el = e.target;
+  if(el && el.tagName==='INPUT' && el.type==='number' && el.closest('table.daily') && el.value==='0'){
+    el.value = '';
+  }
+}, true);
+
+// Если после этого ничего не ввели и ушли с поля — возвращаем "0" визуально (сами данные
+// и так сохраняются как 0 через onchange/updateDayField при пустом значении).
+document.addEventListener('blur', function(e){
+  const el = e.target;
+  if(el && el.tagName==='INPUT' && el.type==='number' && el.closest('table.daily') && el.value===''){
+    el.value = '0';
+  }
+}, true);
+
+// Tab/Shift+Tab внутри таблицы ежедневных данных переходит на следующую ячейку ПО ВЕРТИКАЛИ
+// (тот же день, следующий показатель), а не по горизонтали, как по умолчанию в браузере —
+// так удобнее заполнять один день сверху вниз подряд.
+document.addEventListener('keydown', function(e){
+  if(e.key !== 'Tab') return;
+  const el = e.target;
+  if(!(el && el.tagName==='INPUT' && el.dataset && el.dataset.erow!==undefined)) return;
+  const table = el.closest('table.daily');
+  if(!table) return;
+  const erow = parseInt(el.dataset.erow, 10);
+  const ecol = el.dataset.ecol;
+  const dir = e.shiftKey ? -1 : 1;
+  const target = table.querySelector(`input[data-erow="${erow+dir}"][data-ecol="${ecol}"]`);
+  if(target){
+    e.preventDefault();
+    target.focus();
+    target.select();
+  }
+  // если следующей строки нет (край таблицы) — отдаём управление обычному поведению Tab
+});
+
+/* ======================= PRODUCTS ======================= */
+let openProductEdit = null;
+
+function renderProducts(){
+  const list = document.getElementById('productList');
+  if(sharedProducts.length===0){
+    list.innerHTML = '<div class="empty-state" style="padding:14px 0;">Пока нет товаров — добавьте первый ниже.</div>';
+    return;
+  }
+  const today = todayStr();
+  list.innerHTML = sharedProducts.map(p=>{
+    const hist = (p.costHistory||[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
+    const currentEntry = hist.filter(h=>h.date<=today).slice(-1)[0] || hist[0];
+    const isOpen = openProductEdit===p.id;
+    const historyLines = hist.slice().reverse().map(h=>`с ${fmtDate(h.date)} — ${fmt(h.cost)} ₽`).join('<br>');
+    const articleRows = PRODUCT_ARTICLE_SECTIONS.map(s=>`
+      <div class="pc-article-row">
+        <label>${s.label}</label>
+        <input type="text" value="${escapeHtml((p.articles||{})[s.id]||'')}" placeholder="артикул"
+          onchange="updateProductArticle('${p.id}','${s.id}', this.value)">
+      </div>
+    `).join('');
+    return `
+    <div class="product-card">
+      <div class="pc-head">
+        <span class="pc-name">${escapeHtml(p.name)}</span>
+        <button class="pc-del" onclick="removeProduct('${p.id}')" title="Удалить">×</button>
+      </div>
+      <div class="pc-cost-row">
+        <span class="pc-cost-now">${fmt(currentEntry?currentEntry.cost:0)} ₽</span>
+        <span class="pc-cost-since">${currentEntry? 'себестоимость с '+fmtDate(currentEntry.date) : ''}</span>
+      </div>
+      <button class="pc-toggle" onclick="toggleProductEdit('${p.id}')">${isOpen?'Отменить':'Скорректировать себестоимость'}</button>
+      <div class="pc-edit-form ${isOpen?'open':''}">
+        <input type="date" id="costDate-${p.id}" value="${today}">
+        <input type="number" id="costValue-${p.id}" step="0.01" placeholder="Новая себестоимость, ₽">
+        <button class="save-btn" id="costSaveBtn-${p.id}" onclick="saveCost('${p.id}')">Сохранить</button>
+      </div>
+      ${hist.length>1?`<div class="pc-history">${historyLines}</div>`:''}
+      <div class="pc-articles">
+        <div class="pc-articles-title">Артикулы для сопоставления при импорте:</div>
+        ${articleRows}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleProductEdit(id){
+  openProductEdit = (openProductEdit===id) ? null : id;
+  renderProducts();
+}
+
+function addProduct(){
+  const nameEl = document.getElementById('newPName');
+  const costEl = document.getElementById('newPCost');
+  const name = nameEl.value.trim();
+  const cost = parseFloat(costEl.value)||0;
+  if(!name){ nameEl.focus(); return; }
+  sharedProducts.push(defaultSharedProduct(name, cost));
+  nameEl.value=''; costEl.value='';
+  saveSharedProducts(); renderProducts(); renderDaily(); renderSummary();
+}
+function removeProduct(id){
+  if(!confirm('Удалить товар? Данные по его продажам в днях сохранятся, но перестанут отображаться.')) return;
+  sharedProducts = sharedProducts.filter(p=>p.id!==id);
+  saveSharedProducts(); renderProducts(); renderDaily(); renderSummary();
+}
+function updateProductArticle(id, sectionId, value){
+  const p = sharedProducts.find(p=>p.id===id);
+  if(!p) return;
+  if(!p.articles) p.articles = {};
+  p.articles[sectionId] = value.trim();
+  saveSharedProducts();
+}
+function saveCost(id){
+  const btn = document.getElementById('costSaveBtn-'+id);
+  const dateVal = document.getElementById('costDate-'+id).value;
+  const costVal = parseFloat(document.getElementById('costValue-'+id).value);
+  if(!dateVal || isNaN(costVal)){ alert('Укажите дату и новую себестоимость.'); return; }
+  flashSaveButton(btn, ()=>{
+    const p = sharedProducts.find(p=>p.id===id);
+    upsertCostHistory(p, dateVal, costVal);
+  }, ()=>{
+    openProductEdit = null;
+    renderProducts(); renderDaily(); renderSummary();
+  });
+}
+
+/* ======================= TAX RATE ======================= */
+function renderTaxBox(){
+  const rate = getCurrentTaxRate();
+  document.getElementById('taxCurrentLabel').textContent = fmt(rate)+'%';
+  document.getElementById('taxRateInput').value = '';
+}
+function saveTaxRate(){
+  const btn = document.getElementById('saveTaxBtn');
+  const val = parseFloat(document.getElementById('taxRateInput').value);
+  if(isNaN(val)){ alert('Укажите новую ставку налога.'); return; }
+  flashSaveButton(btn, ()=>{
+    upsertTaxRate(todayStr(), val);
+  }, ()=>{
+    renderTaxBox(); renderDaily(); renderSummary();
+  });
+}
+
+/* ======================= MONTH SELECTORS ======================= */
+let selectedMonthKey = null;
+
+function pickDefaultMonthKey(){
+  const keys = Object.keys(state.months).sort();
+  if(keys.length===0) return null;
+  const cur = currentMonthKey();
+  return keys.includes(cur) ? cur : keys[keys.length-1];
+}
+
+function setSelectedMonth(key){
+  selectedMonthKey = key;
+}
+
+function populateMonthSelectors(){
+  const keys = Object.keys(state.months).sort();
+  if(!selectedMonthKey || !keys.includes(selectedMonthKey)){
+    selectedMonthKey = pickDefaultMonthKey();
+  }
+  ['monthSelect','monthSelectSum'].forEach(id=>{
+    const sel = document.getElementById(id);
+    sel.innerHTML = keys.map(k=>`<option value="${k}">${monthLabel(k)}</option>`).join('');
+    sel.value = selectedMonthKey;
+  });
+}
+
+function addMonth(){
+  const keys = Object.keys(state.months).sort();
+  const latest = keys[keys.length-1] || currentMonthKey();
+  const newKey = nextMonthKey(latest);
+  if(state.months[newKey]){ alert('Этот месяц уже добавлен.'); return; }
+  ensureMonth(newKey);
+  save();
+  selectedMonthKey = newKey;
+  populateMonthSelectors();
+  renderDaily(); renderSummary();
+}
+
+/* ======================= DAILY DATA MODEL ======================= */
+function newDayRow(dateStr, type){
+  const t = type || activeSectionType();
+  if(t === 'wb'){
+    return {
+      date: dateStr,
+      orderedRub:0, orderedQty:0,
+      salesRub:0, boughtNetRub:0,
+      logistics:0, fines:0, extraPayments:0, storage:0, paidAcceptance:0, otherExpenses:0,
+      adsMemo:0,
+      selfBuyRub:0, selfBuyCost:0,
+      external: Object.fromEntries(EXTERNAL_FIELDS.map(f=>[f[0],0])),
+      salesQty:{}   // productId -> qty (Выкуплено, шт.)
+    };
+  }
+  if(t === 'ym'){
+    return {
+      date: dateStr,
+      orderedRub:0, orderedQty:0,
+      salesRub:0, commission:0, logistics:0, fines:0, extraPayments:0,
+      storage:0, paidAcceptance:0, otherExpenses:0, adSpend:0,
+      cogs:0,   // Себестоимость проданного — здесь вводится вручную, товарного каталога нет
+      selfBuyRub:0, selfBuyCost:0,
+      external: Object.fromEntries(EXTERNAL_FIELDS.map(f=>[f[0],0]))
+    };
+  }
+  if(t === 'site'){
+    return {
+      date: dateStr,
+      salesRub:0,
+      external: Object.fromEntries(EXTERNAL_FIELDS.map(f=>[f[0],0])),
+      salesQty:{}   // productId -> qty, для расчёта себестоимости проданного
+    };
+  }
+  return {
+    date: dateStr,
+    orderedRub:0, orderedQty:0,
+    salesRub:0, reward:0, logistics:0, fines:0, extraPayments:0,
+    storage:0, otherExpenses:0, adSpend:0,
+    selfBuyRub:0, selfBuyCost:0,
+    external: Object.fromEntries(EXTERNAL_FIELDS.map(f=>[f[0],0])),
+    salesQty:{}   // productId -> qty
+  };
+}
+
+function calcDay(day){
+  const t = activeSectionType();
+  if(t==='wb') return calcDayWB(day);
+  if(t==='ym') return calcDayYM(day);
+  if(t==='site') return calcDaySite(day);
+  return calcDayOzon(day);
+}
+
+function calcDayOzon(day){
+  const salesRub = num(day.salesRub);
+  const adSpend = num(day.adSpend);
+  const reward = num(day.reward);
+
+  let cogs = 0;
+  sharedProducts.forEach(p=>{
+    const qty = num(day.salesQty[p.id]);
+    cogs += qty * getProductCostAt(p, day.date);
+  });
+
+  const netToAccount = salesRub - reward - num(day.logistics) - num(day.fines) - num(day.storage)
+                        - num(day.otherExpenses) - adSpend + num(day.extraPayments);
+  const drr = salesRub===0 ? null : adSpend/salesRub;
+
+  const selfBuyRub = num(day.selfBuyRub);
+  const selfBuyCost = num(day.selfBuyCost);
+  const margin = netToAccount - cogs - selfBuyRub + selfBuyCost;
+
+  const ext = day.external || {};
+  const externalTotal = EXTERNAL_FIELDS.reduce((sum,[id])=>sum+num(ext[id]),0);
+
+  const taxRate = getTaxRateAt(day.date);
+  const tax = salesRub * taxRate/100;
+  const ebitda = margin - tax;
+  const netProfit = ebitda - externalTotal;
+
+  return {salesRub, adSpend, reward, cogs, netToAccount, drr, selfBuyRub, selfBuyCost, margin, externalTotal, tax, taxRate, ebitda, netProfit};
+}
+
+// Каскад для раздела WB. Логика взята из листов "РНП WB" (формулы отличаются от Ozon):
+// Выкуплено (после СПП и комиссии) вводится вручную, комиссия считается автоматически как
+// Продажа − Выкуплено. Доход на р/с строится от Выкуплено. Маржа считается прямо от Продажи
+// и включает Доплаты (по просьбе — в исходной таблице их не было в этой формуле, добавили,
+// чтобы EBITDA = Маржа − Налог сходилось без расхождений).
+function calcDayWB(day){
+  const salesRub = num(day.salesRub);
+  const boughtNetRub = num(day.boughtNetRub);
+  const commission = salesRub - boughtNetRub;
+
+  let cogs = 0;
+  sharedProducts.forEach(p=>{
+    const qty = num(day.salesQty[p.id]);
+    cogs += qty * getProductCostAt(p, day.date);
+  });
+
+  const logistics = num(day.logistics), fines = num(day.fines), storage = num(day.storage),
+        paidAcceptance = num(day.paidAcceptance), otherExpenses = num(day.otherExpenses),
+        extraPayments = num(day.extraPayments);
+
+  const netToAccount = boughtNetRub - logistics - fines - storage - paidAcceptance + extraPayments - otherExpenses;
+  const adsMemo = num(day.adsMemo);
+  const drr = salesRub===0 ? null : adsMemo/salesRub;
+
+  const selfBuyRub = num(day.selfBuyRub);
+  const selfBuyCost = num(day.selfBuyCost);
+
+  const margin = salesRub - commission - logistics - fines - storage - paidAcceptance - otherExpenses + extraPayments - cogs - selfBuyRub + selfBuyCost;
+
+  const ext = day.external || {};
+  const externalTotal = EXTERNAL_FIELDS.reduce((sum,[id])=>sum+num(ext[id]),0);
+
+  const taxRate = getTaxRateAt(day.date);
+  const tax = salesRub * taxRate/100;
+  const ebitda = margin - tax;
+  const netProfit = ebitda - externalTotal;
+
+  return {salesRub, commission, adsMemo, cogs, netToAccount, drr, selfBuyRub, selfBuyCost, margin, externalTotal, tax, taxRate, ebitda, netProfit};
+}
+
+// Каскад для раздела ЯМ. Структура почти как на Ozon: Комиссия ЯМ и Реклама — отдельные
+// ручные поля (без промежуточного "Выкуплено", как на WB), плюс есть "Стоимость приёмки"
+// (как на WB). Себестоимость проданного — здесь просто ручное поле (нет товарного каталога).
+function calcDayYM(day){
+  const salesRub = num(day.salesRub);
+  const commission = num(day.commission);
+  const adSpend = num(day.adSpend);
+  const logistics = num(day.logistics), fines = num(day.fines), storage = num(day.storage),
+        paidAcceptance = num(day.paidAcceptance), otherExpenses = num(day.otherExpenses),
+        extraPayments = num(day.extraPayments);
+
+  const cogs = num(day.cogs);
+
+  const netToAccount = salesRub - commission - logistics - fines - storage - paidAcceptance
+                        + extraPayments - otherExpenses - adSpend;
+  const drr = salesRub===0 ? null : adSpend/salesRub;
+
+  const selfBuyRub = num(day.selfBuyRub);
+  const selfBuyCost = num(day.selfBuyCost);
+  const margin = netToAccount - cogs - selfBuyRub + selfBuyCost;
+
+  const ext = day.external || {};
+  const externalTotal = EXTERNAL_FIELDS.reduce((sum,[id])=>sum+num(ext[id]),0);
+
+  const taxRate = getTaxRateAt(day.date);
+  const tax = salesRub * taxRate/100;
+  const ebitda = margin - tax;
+  const netProfit = ebitda - externalTotal;
+
+  return {salesRub, adSpend, commission, cogs, netToAccount, drr, selfBuyRub, selfBuyCost, margin, externalTotal, tax, taxRate, ebitda, netProfit};
+}
+
+// Каскад для раздела "Сайт" — по аналогии с Ozon, но без заказов, без самовыкупов и без ДРР.
+// Себестоимость считается от товарного каталога, как на Ozon.
+// Каскад для раздела "Сайт" — по аналогии с Ozon, но без "Внутри Сайта" (нет комиссии,
+// логистики маркетплейса и т.п. — все прочие расходы уже учтены в "Расходы вне Сайта"),
+// без заказов, без самовыкупов и без ДРР. Себестоимость считается от товарного каталога.
+function calcDaySite(day){
+  const salesRub = num(day.salesRub);
+
+  let cogs = 0;
+  sharedProducts.forEach(p=>{
+    const qty = num(day.salesQty[p.id]);
+    cogs += qty * getProductCostAt(p, day.date);
+  });
+
+  const netToAccount = salesRub;
+  const margin = netToAccount - cogs;
+
+  const ext = day.external || {};
+  const externalTotal = EXTERNAL_FIELDS.reduce((sum,[id])=>sum+num(ext[id]),0);
+
+  const taxRate = getTaxRateAt(day.date);
+  const tax = salesRub * taxRate/100;
+  const ebitda = margin - tax;
+  const netProfit = ebitda - externalTotal;
+
+  return {salesRub, cogs, netToAccount, margin, externalTotal, tax, taxRate, ebitda, netProfit};
+}
+
+function isDayFilled(day){
+  const t = activeSectionType();
+  if(t==='wb'){
+    return num(day.orderedRub)!==0 || num(day.orderedQty)!==0 || num(day.salesRub)!==0
+        || num(day.boughtNetRub)!==0 || num(day.logistics)!==0 || num(day.fines)!==0
+        || num(day.extraPayments)!==0 || num(day.storage)!==0 || num(day.paidAcceptance)!==0
+        || num(day.otherExpenses)!==0;
+  }
+  if(t==='ym'){
+    return num(day.orderedRub)!==0 || num(day.orderedQty)!==0 || num(day.salesRub)!==0
+        || num(day.commission)!==0 || num(day.logistics)!==0 || num(day.fines)!==0
+        || num(day.extraPayments)!==0 || num(day.storage)!==0 || num(day.paidAcceptance)!==0
+        || num(day.otherExpenses)!==0 || num(day.adSpend)!==0;
+  }
+  if(t==='site'){
+    return num(day.salesRub)!==0 || Object.values(day.salesQty||{}).some(v=>num(v)!==0);
+  }
+  return num(day.orderedRub)!==0 || num(day.orderedQty)!==0 || num(day.salesRub)!==0
+      || num(day.reward)!==0 || num(day.logistics)!==0 || num(day.fines)!==0
+      || num(day.extraPayments)!==0 || num(day.storage)!==0
+      || num(day.otherExpenses)!==0 || num(day.adSpend)!==0;
+}
+
+/* ======================= GENERIC FIELD GET/SET (dot-path) ======================= */
+function getFieldValue(day, path){
+  if(path.startsWith('salesQty.')) return day.salesQty[path.split('.')[1]]||0;
+  if(path.startsWith('external.')) return (day.external||{})[path.split('.')[1]]||0;
+  return day[path];
+}
+function updateDayField(monthKey, idx, path, value){
+  const month = ensureMonth(monthKey);
+  const day = month.days[idx];
+  if(path.startsWith('salesQty.')){
+    const pid = path.split('.')[1];
+    day.salesQty[pid] = parseFloat(value)||0;
+  } else if(path.startsWith('external.')){
+    const fid = path.split('.')[1];
+    if(!day.external) day.external = {};
+    day.external[fid] = parseFloat(value)||0;
+  } else if(path==='date'){
+    day.date = value;
+  } else {
+    day[path] = parseFloat(value)||0;
+  }
+  save();
+  renderDaily();
+  renderSummary();
+}
+
+/* ======================= IMPORT FROM OZON ACCRUALS REPORT ======================= */
+const IMPORT_REQUIRED_COLUMNS = ['Дата начисления','Тип начисления','SKU','Количество','Цена продавца','Сумма итого, руб.'];
+
+// Встроенные (заводские) правила — начальная точка. Всё, что дашборд узнаёт сверх этого
+// (новые или переименованные Ozon'ом типы начисления), уходит в state.customTypeMap и
+// запоминается навсегда — во второй раз спрашивать не будет.
+const IMPORT_BUILTIN_MAP = {
+  'Выручка': 'revenue',
+  'Возврат выручки': 'refund',
+  'Программы партнёров': 'ignore',
+  'Баллы за скидки': 'ignore',
+  'Вознаграждение за продажу': 'reward',
+  'Упаковка товара партнёрами': 'logistics',
+  'Логистика': 'logistics',
+  'Доставка до места выдачи': 'logistics',
+  'Доставка до места выдачи силами Ozon': 'logistics',
+  'Обработка возвратов, отмен и невыкупов партнёрами': 'logistics',
+  'Обратная логистика': 'logistics',
+  'Кросс-докинг': 'logistics',
+  'Подготовка товара к вывозу: Брак': 'logistics',
+  'Вывоз товара со склада силами Ozon: Доставка до ПВЗ': 'logistics',
+  'Временное размещение товара партнерами': 'fines',
+  'Размещение на складе': 'storage',
+  'Обеспечение материалами для упаковки товара': 'otherExpenses',
+  'Эквайринг': 'otherExpenses',
+  'Досрочная выплата': 'otherExpenses',
+  'Декомпенсации и возвращение товаров на склад': 'otherExpenses',
+  'Подписка Premium': 'otherExpenses',
+  'Оплата за клик': 'adSpend',
+  'Продвижение с оплатой за заказ': 'adSpend',
+  'Ускоренный сбор отзывов': 'adSpend',
+};
+
+const IMPORT_FIELD_OPTIONS = [
+  ['revenue','Продажа (как Выручка)'],
+  ['refund','Вычесть из продажи (как Возврат выручки)'],
+  ['reward','Вознаграждение'],
+  ['logistics','Логистика'],
+  ['fines','Штрафы'],
+  ['extraPayments','Доплаты'],
+  ['storage','Хранение'],
+  ['otherExpenses','Прочее'],
+  ['adSpend','Реклама'],
+  ['ignore','Не учитывать'],
+];
+function importFieldLabel(field){
+  const found = IMPORT_FIELD_OPTIONS.find(([v])=>v===field);
+  return found ? found[1] : field;
+}
+function resolveAccrualType(type){
+  if(IMPORT_BUILTIN_MAP[type]) return IMPORT_BUILTIN_MAP[type];
+  if(state.customTypeMap && state.customTypeMap[type]) return state.customTypeMap[type];
+  return null; // неизвестен — нужно спросить
+}
+
+function round2(v){ return Math.round((num(v)+Number.EPSILON)*100)/100; }
+
+// Наш XLSX-парсер отдаёт даты как числа (серийный номер Excel) — берём UTC-компоненты,
+// чтобы не словить сдвиг на день из-за часового пояса браузера. Ветка Date оставлена
+// на случай, если строки придут из другого источника.
+function xlsxDateToStr(v){
+  if(v instanceof Date){
+    return `${v.getUTCFullYear()}-${String(v.getUTCMonth()+1).padStart(2,'0')}-${String(v.getUTCDate()).padStart(2,'0')}`;
+  }
+  if(typeof v === 'number'){
+    const utcDays = Math.floor(v - 25569);
+    const d = new Date(utcDays * 86400 * 1000);
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+  }
+  if(typeof v === 'string'){
+    const m = v.match(/^(\d{2})\.(\d{2})\.(\d{4})/);
+    if(m) return `${m[3]}-${m[2]}-${m[1]}`;
+  }
+  return null;
+}
+
+// Чистая функция-агрегатор: принимает строки листа (массив массивов, первая — заголовок).
+// Незнакомые типы начисления (не в IMPORT_BUILTIN_MAP и не в state.customTypeMap) собираются
+// в unknownTypes — импорт по ним не применяется, пока пользователь не укажет поле.
+function normalizeHeaderText(s){
+  return String(s===null||s===undefined?'':s).replace(/\s+/g,' ').trim();
+}
+
+function findHeaderRowIndex(rows){
+  const wanted = IMPORT_REQUIRED_COLUMNS.map(normalizeHeaderText);
+  const limit = Math.min(rows.length, 15);
+  for(let i=0; i<limit; i++){
+    const row = rows[i];
+    if(!row) continue;
+    const normalizedRow = row.map(normalizeHeaderText);
+    if(wanted.every(w => normalizedRow.includes(w))) return i;
+  }
+  return -1;
+}
+
+function aggregateAccrualRows(rows){
+  if(!rows || rows.length===0) throw new Error('Файл пуст.');
+  const headerRowIdx = findHeaderRowIndex(rows);
+  if(headerRowIdx===-1){
+    const preview = rows.slice(0,5).map((r,i)=>{
+      const cells = (r||[]).slice(0,6).map(c=>c===null||c===undefined?'':String(c));
+      return `Строка ${i+1}: ${cells.join(' | ')}`;
+    }).join('\n');
+    throw new Error('В файле не найдены ожидаемые столбцы ('+IMPORT_REQUIRED_COLUMNS.join(', ')+'). Начало файла:\n'+preview);
+  }
+  const header = rows[headerRowIdx].map(normalizeHeaderText);
+  const idx = name => header.indexOf(normalizeHeaderText(name));
+  const cols = Object.fromEntries(IMPORT_REQUIRED_COLUMNS.map(n=>[n, idx(n)]));
+
+  const byDate = {};
+  const unknownTypes = new Set();
+
+  for(let r=headerRowIdx+1; r<rows.length; r++){
+    const row = rows[r];
+    if(!row || row.length===0) continue;
+    const type = row[cols['Тип начисления']]!==null && row[cols['Тип начисления']]!==undefined
+      ? normalizeHeaderText(row[cols['Тип начисления']]) : '';
+    const dateVal = row[cols['Дата начисления']];
+    if(!type || !dateVal) continue;
+    const dateStr = xlsxDateToStr(dateVal);
+    if(!dateStr) continue;
+
+    const field = resolveAccrualType(type);
+    if(field===null){ unknownTypes.add(type); continue; }
+    if(field==='ignore') continue;
+
+    const sku = row[cols['SKU']]!==null && row[cols['SKU']]!==undefined ? String(row[cols['SKU']]).trim() : '';
+    const qty = num(row[cols['Количество']]);
+    const price = num(row[cols['Цена продавца']]);
+    const total = num(row[cols['Сумма итого, руб.']]);
+
+    if(!byDate[dateStr]) byDate[dateStr] = {
+      salesRub:0, reward:0, logistics:0, fines:0, extraPayments:0, storage:0, otherExpenses:0, adSpend:0, skuQty:{}
+    };
+    const acc = byDate[dateStr];
+
+    if(field==='revenue'){
+      // "Цена продавца" у Выручки — положительная сумма
+      acc.salesRub += price;
+      if(sku) acc.skuQty[sku] = (acc.skuQty[sku]||0) + qty;
+    } else if(field==='refund'){
+      // "Цена продавца" у Возврата выручки уже отрицательная в самой выгрузке — просто
+      // прибавляем как есть (двойное вычитание задваивало бы знак и увеличивало продажу
+      // вместо уменьшения). "Количество" при этом всегда указано без знака, поэтому
+      // направление по штукам задаём явно.
+      acc.salesRub += price;
+      if(sku) acc.skuQty[sku] = (acc.skuQty[sku]||0) - qty;
+    } else {
+      // "Сумма итого" в выгрузке Ozon: минус — списание (расход), плюс — возврат/корректировка
+      // в пользу продавца (например «Возврат вознаграждения»). Знак учитывается всегда одним
+      // и тем же правилом, независимо от конкретного типа начисления: расход = -Сумма_итого.
+      acc[field] += -total;
+    }
+  }
+
+  Object.values(byDate).forEach(acc=>{
+    ['salesRub','reward','logistics','fines','extraPayments','storage','otherExpenses','adSpend'].forEach(k=>{
+      acc[k] = round2(acc[k]);
+    });
+    Object.keys(acc.skuQty).forEach(sku=>{ acc.skuQty[sku] = round2(acc.skuQty[sku]); });
+  });
+
+  return {byDate, unknownTypes};
+}
+
+function applyImportedAccruals(byDate){
+  const sectionId = rootState.activeSectionId;
+  const productBySku = {};
+  sharedProducts.forEach(p=>{ const a=(p.articles||{})[sectionId]; if(a) productBySku[String(a).trim()] = p; });
+
+  const datesUpdated = [];
+  const unmatchedSkus = new Set();
+
+  Object.entries(byDate).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([dateStr, acc])=>{
+    const monthKey = dateStr.slice(0,7);
+    const month = ensureMonth(monthKey);
+    let day = month.days.find(d=>d.date===dateStr);
+    if(!day){
+      day = newDayRow(dateStr);
+      month.days.push(day);
+      month.days.sort((a,b)=>a.date.localeCompare(b.date));
+    }
+    day.salesRub = acc.salesRub;
+    day.reward = acc.reward;
+    day.logistics = acc.logistics;
+    day.fines = acc.fines;
+    day.storage = acc.storage;
+    day.otherExpenses = acc.otherExpenses;
+    day.adSpend = acc.adSpend;
+
+    Object.entries(acc.skuQty).forEach(([sku, qty])=>{
+      const product = productBySku[sku];
+      if(product){
+        day.salesQty[product.id] = qty;
+      } else {
+        unmatchedSkus.add(sku);
+      }
+    });
+
+    datesUpdated.push({date: dateStr, ...acc});
+  });
+
+  save();
+  return {datesUpdated, unmatchedSkus};
+}
+
+function renderImportReport(html){
+  document.getElementById('importReport').innerHTML = html;
+}
+
+function fieldOptionsHtml(selected){
+  return IMPORT_FIELD_OPTIONS.map(([v,l])=>`<option value="${v}" ${v===selected?'selected':''}>${l}</option>`).join('');
+}
+
+let pendingImportRows = null;
+let pendingUnknownTypes = [];
+
+function renderUnknownTypesResolver(){
+  const html = `
+    <div class="import-warn">
+      <div style="font-weight:650;margin-bottom:8px;">
+        В файле есть типы начисления, для которых ещё нет правила — Ozon мог переименовать их
+        или добавить новые. Укажите, куда каждый относить (запомню на будущее):
+      </div>
+      ${pendingUnknownTypes.map((t,i)=>`
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+          <span style="min-width:280px;">${escapeHtml(t)}</span>
+          <select id="unknownTypeSelect-${i}">${fieldOptionsHtml('ignore')}</select>
+        </div>
+      `).join('')}
+      <div style="margin-top:10px;display:flex;gap:8px;">
+        <button class="save-btn" onclick="resolveUnknownTypesAndReimport()">Запомнить и импортировать</button>
+        <button onclick="cancelImportResolution()">Отмена</button>
+      </div>
+    </div>`;
+  renderImportReport(html);
+}
+
+function resolveUnknownTypesAndReimport(){
+  if(!state.customTypeMap) state.customTypeMap = {};
+  pendingUnknownTypes.forEach((t,i)=>{
+    const sel = document.getElementById('unknownTypeSelect-'+i);
+    state.customTypeMap[t] = sel.value;
+  });
+  save();
+  renderKnownTypeMappings();
+  const rows = pendingImportRows;
+  pendingImportRows = null; pendingUnknownTypes = [];
+  runImport(rows);
+}
+function cancelImportResolution(){
+  pendingImportRows = null; pendingUnknownTypes = [];
+  renderImportReport('');
+}
+
+function renderKnownTypeMappings(){
+  const el = document.getElementById('knownMappings');
+  if(!el) return;
+  const entries = Object.entries(state.customTypeMap||{});
+  window.__typeMapEntries = entries;
+  if(entries.length===0){ el.innerHTML=''; return; }
+  el.innerHTML = `
+    <div style="margin-top:10px;font-size:11.5px;color:var(--ink-dim);">
+      <div style="font-weight:600;margin-bottom:4px;">Запомненные сопоставления типов начисления:</div>
+      ${entries.map(([t,f],i)=>`
+        <div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px dashed var(--line);">
+          <span>${escapeHtml(t)} → ${importFieldLabel(f)}</span>
+          <button style="background:none;border:none;color:var(--bad);cursor:pointer;font-size:11.5px;" onclick="removeTypeMappingByIndex(${i})">убрать</button>
+        </div>
+      `).join('')}
+    </div>`;
+}
+function removeTypeMappingByIndex(i){
+  const entries = window.__typeMapEntries || [];
+  const entry = entries[i];
+  if(!entry || !state.customTypeMap) return;
+  delete state.customTypeMap[entry[0]];
+  save();
+  renderKnownTypeMappings();
+}
+
+function runImport(rows){
+  const {byDate, unknownTypes} = aggregateAccrualRows(rows);
+
+  if(unknownTypes.size>0){
+    pendingImportRows = rows;
+    pendingUnknownTypes = Array.from(unknownTypes);
+    renderUnknownTypesResolver();
+    return;
+  }
+
+  const {datesUpdated, unmatchedSkus} = applyImportedAccruals(byDate);
+
+  const rowsHtml = datesUpdated.map(d=>`
+    <tr>
+      <td>${fmtDate(d.date)}</td>
+      <td>${fmt(d.salesRub)}</td>
+      <td>${fmt(d.reward)}</td>
+      <td>${fmt(d.logistics)}</td>
+      <td>${fmt(d.fines)}</td>
+      <td>${fmt(d.storage)}</td>
+      <td>${fmt(d.otherExpenses)}</td>
+      <td>${fmt(d.adSpend)}</td>
+    </tr>
+  `).join('');
+
+  let html = `<div class="import-ok">Импортировано дней: ${datesUpdated.length}</div>
+    <table class="import-table">
+      <thead><tr><th>Дата</th><th>Продажа</th><th>Вознагр.</th><th>Логистика</th><th>Штрафы</th><th>Хранение</th><th>Прочее</th><th>Реклама</th></tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>`;
+
+  if(unmatchedSkus.size>0){
+    html += `<div class="import-warn">
+      Не найдено товаров с такими SKU в каталоге — их количество не попало в разбивку по товарам
+      (но входит в общую сумму продажи): <b>${Array.from(unmatchedSkus).map(escapeHtml).join(', ')}</b>.
+      Добавьте эти SKU карточкам товаров во вкладке «Товары» и импортируйте файл ещё раз.
+    </div>`;
+  }
+
+  renderImportReport(html);
+  populateMonthSelectors();
+  renderDaily(); renderSummary();
+}
+
+/* ======================= МИНИМАЛЬНЫЙ XLSX-ПАРСЕР (без внешних библиотек) =======================
+   .xlsx — это ZIP-архив с XML внутри. Вместо стороннего парсера читаем нужные файлы из архива
+   сами (ZIP central directory + deflate через нативный DecompressionStream) и разбираем XML
+   через нативный DOMParser. Это устраняет проблему конкретно с этим форматом выгрузки Ozon —
+   там ячейки помечены как t="str" без сопутствующей формулы, что сторонние парсеры иногда
+   обрабатывают некорректно и портят кириллицу. Наш разбор читает <v> напрямую, так что
+   искажений не возникает. */
+
+function dvU32(dv, off){ return dv.getUint32(off, true); }
+function dvU16(dv, off){ return dv.getUint16(off, true); }
+
+function findZipEOCD(bytes, dv){
+  const sig = 0x06054b50;
+  const maxBack = Math.min(bytes.length, 22 + 65557);
+  for(let back=22; back<=maxBack; back++){
+    const i = bytes.length - back;
+    if(i<0) break;
+    if(dvU32(dv, i) === sig){
+      return {cdOffset: dvU32(dv, i+16), entryCount: dvU16(dv, i+10)};
+    }
+  }
+  throw new Error('Не удалось найти оглавление ZIP-архива — похоже, это не .xlsx файл.');
+}
+function readZipCentralDirectory(dv, bytes, eocd){
+  const entries = [];
+  let p = eocd.cdOffset;
+  const decoder = new TextDecoder('utf-8');
+  for(let i=0; i<eocd.entryCount; i++){
+    if(dvU32(dv, p) !== 0x02014b50) throw new Error('Повреждена центральная директория ZIP-архива.');
+    const compMethod = dvU16(dv, p+10);
+    const compSize = dvU32(dv, p+20);
+    const nameLen = dvU16(dv, p+28);
+    const extraLen = dvU16(dv, p+30);
+    const commentLen = dvU16(dv, p+32);
+    const localHeaderOffset = dvU32(dv, p+42);
+    const name = decoder.decode(bytes.slice(p+46, p+46+nameLen));
+    entries.push({name, compMethod, compSize, localHeaderOffset});
+    p += 46 + nameLen + extraLen + commentLen;
+  }
+  return entries;
+}
+async function extractZipEntry(dv, bytes, entry){
+  const p = entry.localHeaderOffset;
+  if(dvU32(dv, p) !== 0x04034b50) throw new Error('Повреждён локальный заголовок ZIP-архива.');
+  const nameLen = dvU16(dv, p+26);
+  const extraLen = dvU16(dv, p+28);
+  const dataStart = p + 30 + nameLen + extraLen;
+  const compressed = bytes.slice(dataStart, dataStart + entry.compSize);
+  if(entry.compMethod === 0) return compressed;
+  if(entry.compMethod === 8){
+    if(typeof DecompressionStream === 'undefined'){
+      throw new Error('Браузер не поддерживает распаковку ZIP (DecompressionStream). Обновите браузер до недавней версии Chrome/Edge/Firefox/Safari.');
+    }
+    const stream = new Blob([compressed]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+  throw new Error('Неподдерживаемый метод сжатия в ZIP: '+entry.compMethod);
+}
+async function readXlsxZipEntries(arrayBuffer, wantedNames){
+  const bytes = new Uint8Array(arrayBuffer);
+  const dv = new DataView(arrayBuffer);
+  const eocd = findZipEOCD(bytes, dv);
+  const central = readZipCentralDirectory(dv, bytes, eocd);
+  const decoder = new TextDecoder('utf-8');
+  const result = {};
+  for(const name of wantedNames){
+    const entry = central.find(e=>e.name===name);
+    if(entry) result[name] = decoder.decode(await extractZipEntry(dv, bytes, entry));
+  }
+  return result;
+}
+
+function colLettersToIndex(letters){
+  let idx = 0;
+  for(let i=0; i<letters.length; i++) idx = idx*26 + (letters.charCodeAt(i) - 64);
+  return idx - 1;
+}
+function parseSharedStringsXml(xmlText){
+  const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+  const siEls = doc.getElementsByTagName('si');
+  const arr = [];
+  for(let i=0; i<siEls.length; i++){
+    const tEls = siEls[i].getElementsByTagName('t');
+    let text = '';
+    for(let j=0; j<tEls.length; j++) text += (tEls[j].textContent || '');
+    arr.push(text);
+  }
+  return arr;
+}
+function parseSheetXmlToRows(xmlText, sharedStrings){
+  const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+  const rowEls = doc.getElementsByTagName('row');
+  const rows = [];
+  for(let i=0; i<rowEls.length; i++){
+    const cellEls = rowEls[i].getElementsByTagName('c');
+    const rowArr = [];
+    for(let j=0; j<cellEls.length; j++){
+      const c = cellEls[j];
+      const ref = c.getAttribute('r');
+      const m = ref ? ref.match(/^([A-Z]+)/) : null;
+      const colIdx = m ? colLettersToIndex(m[1]) : j;
+      const t = c.getAttribute('t') || 'n';
+      const vEl = c.getElementsByTagName('v')[0];
+      let value = null;
+      if(t === 's'){
+        const idx = vEl ? parseInt(vEl.textContent, 10) : -1;
+        value = sharedStrings[idx] !== undefined ? sharedStrings[idx] : '';
+      } else if(t === 'inlineStr'){
+        const isEl = c.getElementsByTagName('is')[0];
+        value = isEl ? (isEl.textContent || '') : '';
+      } else if(t === 'str'){
+        value = vEl ? vEl.textContent : '';
+      } else if(t === 'b'){
+        value = vEl ? vEl.textContent === '1' : null;
+      } else {
+        value = (vEl && vEl.textContent !== '') ? Number(vEl.textContent) : null;
+      }
+      while(rowArr.length < colIdx) rowArr.push(null);
+      rowArr[colIdx] = value;
+    }
+    rows.push(rowArr);
+  }
+  return rows;
+}
+function resolveSheetXmlPath(workbookXmlText, relsXmlText){
+  try{
+    const wbDoc = new DOMParser().parseFromString(workbookXmlText, 'application/xml');
+    const sheetEl = wbDoc.getElementsByTagName('sheet')[0];
+    const rid = sheetEl ? sheetEl.getAttribute('r:id') : null;
+    if(!rid) return 'xl/worksheets/sheet1.xml';
+    const relsDoc = new DOMParser().parseFromString(relsXmlText, 'application/xml');
+    const relEls = relsDoc.getElementsByTagName('Relationship');
+    for(let i=0; i<relEls.length; i++){
+      if(relEls[i].getAttribute('Id') === rid){
+        let target = relEls[i].getAttribute('Target').replace(/^\//,'');
+        if(!target.startsWith('xl/')) target = 'xl/'+target;
+        return target;
+      }
+    }
+  }catch(e){ /* используем путь по умолчанию */ }
+  return 'xl/worksheets/sheet1.xml';
+}
+async function parseGenericXlsxFile(arrayBuffer){
+  const wbFiles = await readXlsxZipEntries(arrayBuffer, ['xl/workbook.xml','xl/_rels/workbook.xml.rels']);
+  const sheetPath = resolveSheetXmlPath(wbFiles['xl/workbook.xml']||'', wbFiles['xl/_rels/workbook.xml.rels']||'');
+  const files = await readXlsxZipEntries(arrayBuffer, ['xl/sharedStrings.xml', sheetPath]);
+  if(!files[sheetPath]) throw new Error('Не удалось найти лист с данными внутри файла.');
+  const sharedStrings = files['xl/sharedStrings.xml'] ? parseSharedStringsXml(files['xl/sharedStrings.xml']) : [];
+  return parseSheetXmlToRows(files[sheetPath], sharedStrings);
+}
+
+function handleImportFile(){
+  const input = document.getElementById('importFileInput');
+  const file = input.files && input.files[0];
+  if(!file){ alert('Выберите файл отчёта (.xlsx).'); return; }
+  const btn = document.getElementById('importBtn');
+  btn.disabled = true;
+  const originalLabel = btn.textContent;
+  btn.textContent = 'Читаю файл…';
+
+  const reader = new FileReader();
+  reader.onload = async (e)=>{
+    try{
+      const rows = await parseGenericXlsxFile(e.target.result);
+      runImport(rows);
+    }catch(err){
+      renderImportReport(`<div class="import-err">Не удалось разобрать файл: ${escapeHtml(err.message)}</div>`);
+    }finally{
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+      input.value = '';
+    }
+  };
+  reader.onerror = ()=>{
+    renderImportReport('<div class="import-err">Не удалось прочитать файл.</div>');
+    btn.disabled = false; btn.textContent = originalLabel;
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/* ======================= WB IMPORT (Выкупили по артикулу) ======================= */
+const WB_REQUIRED_COLUMNS = ['Артикул WB','Выкупили, шт.'];
+
+function findWBHeaderRowIndex(rows){
+  const norm = s => String(s===null||s===undefined?'':s).replace(/\s+/g,' ').trim();
+  const wanted = WB_REQUIRED_COLUMNS.map(norm);
+  for(let i=0; i<Math.min(rows.length,10); i++){
+    const row = rows[i];
+    if(!row) continue;
+    const nr = row.map(norm);
+    if(wanted.every(w=>nr.includes(w))) return i;
+  }
+  return -1;
+}
+
+// Дата отчёта не хранится по строкам — она в заголовке файла ("... с ДД.ММ.ГГГГ по ДД.ММ.ГГГГ ...").
+// Ищем этот текст в первых строках листа. Поддерживаем только отчёт за один день (start===end),
+// потому что построчной даты в этом формате нет и растянуть по дням период мы не можем.
+function findWBReportDate(rows){
+  const re = /с\s+(\d{2})\.(\d{2})\.(\d{4})\s+по\s+(\d{2})\.(\d{2})\.(\d{4})/;
+  for(let i=0; i<Math.min(rows.length,5); i++){
+    const row = rows[i];
+    if(!row) continue;
+    for(const cell of row){
+      if(typeof cell === 'string'){
+        const m = cell.match(re);
+        if(m){
+          const start = `${m[3]}-${m[2]}-${m[1]}`;
+          const end = `${m[6]}-${m[5]}-${m[4]}`;
+          return {start, end};
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function aggregateWBRedemptions(rows){
+  const headerRowIdx = findWBHeaderRowIndex(rows);
+  if(headerRowIdx===-1){
+    const preview = rows.slice(0,5).map((r,i)=>{
+      const cells = (r||[]).slice(0,6).map(c=>c===null||c===undefined?'':String(c));
+      return `Строка ${i+1}: ${cells.join(' | ')}`;
+    }).join('\n');
+    throw new Error('В файле не найдены ожидаемые столбцы ('+WB_REQUIRED_COLUMNS.join(', ')+'). Начало файла:\n'+preview);
+  }
+  const dateInfo = findWBReportDate(rows);
+  if(!dateInfo){
+    throw new Error('Не удалось найти период отчёта в заголовке файла (строка вида «с ДД.ММ.ГГГГ по ДД.ММ.ГГГГ»).');
+  }
+  if(dateInfo.start !== dateInfo.end){
+    throw new Error(`Отчёт охватывает несколько дней (с ${fmtDate(dateInfo.start)} по ${fmtDate(dateInfo.end)}). Импорт поддерживает только отчёт за один день — выгрузите каждый день отдельным файлом.`);
+  }
+
+  const norm = s => String(s===null||s===undefined?'':s).replace(/\s+/g,' ').trim();
+  const header = rows[headerRowIdx].map(norm);
+  const idxArticle = header.indexOf('Артикул WB');
+  const idxRedeemed = header.indexOf('Выкупили, шт.');
+  const idxSellerArticle = header.indexOf('Артикул продавца');
+
+  const qtyByArticle = {};
+  const nameByArticle = {};
+  for(let r=headerRowIdx+1; r<rows.length; r++){
+    const row = rows[r];
+    if(!row || row.length===0) continue;
+    const article = row[idxArticle];
+    if(article===null || article===undefined || article==='') continue;
+    const key = String(article).trim();
+    const qty = num(row[idxRedeemed]);
+    qtyByArticle[key] = (qtyByArticle[key]||0) + qty;
+    if(idxSellerArticle!==-1 && !nameByArticle[key]) nameByArticle[key] = row[idxSellerArticle];
+  }
+  return {date: dateInfo.start, qtyByArticle, nameByArticle};
+}
+
+function applyWBRedemptions(date, qtyByArticle){
+  const productByArticle = {};
+  sharedProducts.forEach(p=>{ const a=(p.articles||{}).wb_sekai; if(a) productByArticle[String(a).trim()] = p; });
+
+  const monthKey = date.slice(0,7);
+  const month = ensureMonth(monthKey);
+  let day = month.days.find(d=>d.date===date);
+  if(!day){
+    day = newDayRow(date, 'wb');
+    month.days.push(day);
+    month.days.sort((a,b)=>a.date.localeCompare(b.date));
+  }
+
+  const matched = [];
+  const unmatched = [];
+  Object.entries(qtyByArticle).forEach(([article, qty])=>{
+    const product = productByArticle[article];
+    if(product){
+      day.salesQty[product.id] = round2(qty);
+      matched.push({name: product.name, qty});
+    } else {
+      unmatched.push({article, qty});
+    }
+  });
+
+  save();
+  return {date, matched, unmatched};
+}
+
+function renderImportReportWB(html){
+  document.getElementById('importReportWB').innerHTML = html;
+}
+
+function handleImportFileWB(){
+  const input = document.getElementById('importFileInputWB');
+  const file = input.files && input.files[0];
+  if(!file){ alert('Выберите файл отчёта (.xlsx).'); return; }
+  const btn = document.getElementById('importBtnWB');
+  btn.disabled = true;
+  const originalLabel = btn.textContent;
+  btn.textContent = 'Читаю файл…';
+
+  const reader = new FileReader();
+  reader.onload = async (e)=>{
+    try{
+      const rows = await parseGenericXlsxFile(e.target.result);
+      const {date, qtyByArticle, nameByArticle} = aggregateWBRedemptions(rows);
+      const {matched, unmatched} = applyWBRedemptions(date, qtyByArticle);
+
+      let html = `<div class="import-ok">Импортирован день: ${fmtDate(date)}</div>`;
+      if(matched.length){
+        html += `<table class="import-table"><thead><tr><th>Товар</th><th>Выкупили, шт.</th></tr></thead><tbody>`;
+        html += matched.map(m=>`<tr><td>${escapeHtml(m.name)}</td><td>${fmtQty(m.qty)}</td></tr>`).join('');
+        html += `</tbody></table>`;
+      }
+      if(unmatched.length){
+        html += `<div class="import-warn">
+          Не найдено товаров с такими артикулами WB в каталоге — их количество не учтено:
+          <b>${unmatched.map(u=>escapeHtml(String(u.article))+' ('+escapeHtml(nameByArticle[u.article]||'?')+') — '+fmtQty(u.qty)+' шт.').join(', ')}</b>.
+          Добавьте эти артикулы карточкам товаров во вкладке «Товары» и импортируйте файл ещё раз.
+        </div>`;
+      }
+      renderImportReportWB(html);
+      populateMonthSelectors();
+      renderDaily(); renderSummary();
+    }catch(err){
+      renderImportReportWB(`<div class="import-err">Не удалось разобрать файл: ${escapeHtml(err.message)}</div>`);
+    }finally{
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+      input.value = '';
+    }
+  };
+  reader.onerror = ()=>{
+    renderImportReportWB('<div class="import-err">Не удалось прочитать файл.</div>');
+    btn.disabled = false; btn.textContent = originalLabel;
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+
+/* ======================= TRANSPOSED DAILY TABLE ======================= */
+function getGroupMeta(){
+  const t = activeSectionType();
+  const mp = t==='wb' ? 'ВБ' : (t==='ym' ? 'ЯМ' : (t==='site' ? 'Сайта' : 'Ozon'));
+  return {
+    orders:   {label:'Заказы'},
+    sales:    {label:'Продажи, руб'},
+    products: {label:'Товары, шт'},
+    inside:   {label:'Внутри '+mp+', руб'},
+    outside:  {label:'Вне '+mp+', руб'},
+    selfbuy:  {label:'Самовыкупы, руб'},
+    result:   {label:'Итоги дня'},
+  };
+}
+
+function buildMetricRows(){
+  const t = activeSectionType();
+  if(t==='wb') return buildMetricRowsWB();
+  if(t==='ym') return buildMetricRowsYM();
+  if(t==='site') return buildMetricRowsSite();
+  return buildMetricRowsOzon();
+}
+
+function buildMetricRowsOzon(){
+  const rows = [];
+  rows.push({group:'orders', label:'Заказано, ₽', field:'orderedRub', kind:'money'});
+  rows.push({group:'orders', label:'Заказано, шт', field:'orderedQty', kind:'qty'});
+  rows.push({group:'sales', label:'Продажа, ₽', field:'salesRub', kind:'money'});
+  sharedProducts.forEach(p=>{
+    rows.push({group:'products', label:p.name, field:'salesQty.'+p.id, kind:'qty'});
+  });
+  rows.push({group:'inside', label:'Вознаграждение', field:'reward', kind:'money'});
+  rows.push({group:'inside', label:'Логистика', field:'logistics', kind:'money'});
+  rows.push({group:'inside', label:'Штрафы', field:'fines', kind:'money'});
+  rows.push({group:'inside', label:'Доплаты', field:'extraPayments', kind:'money'});
+  rows.push({group:'inside', label:'Хранение', field:'storage', kind:'money'});
+  rows.push({group:'inside', label:'Прочее', field:'otherExpenses', kind:'money'});
+  rows.push({group:'inside', label:'Реклама', field:'adSpend', kind:'money'});
+  EXTERNAL_FIELDS.forEach(([id,label])=>{
+    rows.push({group:'outside', label, field:'external.'+id, kind:'money'});
+  });
+  rows.push({group:'selfbuy', label:'Сумма', field:'selfBuyRub', kind:'money'});
+  rows.push({group:'selfbuy', label:'Себестоимость', field:'selfBuyCost', kind:'money'});
+  return rows;
+}
+
+// Раздел WB: структура "Внутри ВБ" отличается от Ozon — здесь вводится итоговая сумма
+// "Выкуплено за вычетом СПП и комиссии", а комиссия считается автоматически (Продажа − Выкуплено).
+// "В т.ч. реклама" — справочная расшифровка внутри Прочих расходов (не вычитается отдельно),
+// используется только для расчёта ДРР%, как и на Ozon.
+function buildMetricRowsWB(){
+  const rows = [];
+  rows.push({group:'orders', label:'Заказано до СПП, ₽', field:'orderedRub', kind:'money'});
+  rows.push({group:'orders', label:'Заказано, шт', field:'orderedQty', kind:'qty'});
+  rows.push({group:'sales', label:'Продажа, ₽', field:'salesRub', kind:'money'});
+  sharedProducts.forEach(p=>{
+    rows.push({group:'products', label:p.name, field:'salesQty.'+p.id, kind:'qty'});
+  });
+  rows.push({group:'inside', label:'Выкуплено (за вычетом СПП и комиссии)', field:'boughtNetRub', kind:'money'});
+  rows.push({group:'inside', label:'Комиссия WB (авто)', computed:true, key:'commission', kind:'money'});
+  rows.push({group:'inside', label:'Логистика', field:'logistics', kind:'money'});
+  rows.push({group:'inside', label:'Штрафы', field:'fines', kind:'money'});
+  rows.push({group:'inside', label:'Доплаты', field:'extraPayments', kind:'money'});
+  rows.push({group:'inside', label:'Хранение', field:'storage', kind:'money'});
+  rows.push({group:'inside', label:'Платная приёмка', field:'paidAcceptance', kind:'money'});
+  rows.push({group:'inside', label:'Прочие расходы', field:'otherExpenses', kind:'money'});
+  rows.push({group:'inside', label:'В т.ч. реклама (справочно)', field:'adsMemo', kind:'money'});
+  EXTERNAL_FIELDS.forEach(([id,label])=>{
+    rows.push({group:'outside', label, field:'external.'+id, kind:'money'});
+  });
+  rows.push({group:'selfbuy', label:'Сумма', field:'selfBuyRub', kind:'money'});
+  rows.push({group:'selfbuy', label:'Себестоимость', field:'selfBuyCost', kind:'money'});
+  return rows;
+}
+
+// Раздел ЯМ: нет каталога товаров, поэтому нет группы "Товары" и себестоимость —
+// обычное ручное поле внутри "Внутри ЯМ", а не расчёт по артикулам.
+function buildMetricRowsYM(){
+  const rows = [];
+  rows.push({group:'orders', label:'Заказано до скидки, ₽', field:'orderedRub', kind:'money'});
+  rows.push({group:'orders', label:'Заказано, шт', field:'orderedQty', kind:'qty'});
+  rows.push({group:'sales', label:'Продажа, ₽', field:'salesRub', kind:'money'});
+  rows.push({group:'inside', label:'Комиссия ЯМ', field:'commission', kind:'money'});
+  rows.push({group:'inside', label:'Логистика (в т.ч. кросс-докинг)', field:'logistics', kind:'money'});
+  rows.push({group:'inside', label:'Штрафы', field:'fines', kind:'money'});
+  rows.push({group:'inside', label:'Доплаты', field:'extraPayments', kind:'money'});
+  rows.push({group:'inside', label:'Хранение', field:'storage', kind:'money'});
+  rows.push({group:'inside', label:'Стоимость приёмки', field:'paidAcceptance', kind:'money'});
+  rows.push({group:'inside', label:'Прочие расходы (в т.ч. эквайринг)', field:'otherExpenses', kind:'money'});
+  rows.push({group:'inside', label:'Реклама', field:'adSpend', kind:'money'});
+  rows.push({group:'inside', label:'Себестоимость проданного товара', field:'cogs', kind:'money'});
+  EXTERNAL_FIELDS.forEach(([id,label])=>{
+    rows.push({group:'outside', label, field:'external.'+id, kind:'money'});
+  });
+  rows.push({group:'selfbuy', label:'Сумма', field:'selfBuyRub', kind:'money'});
+  rows.push({group:'selfbuy', label:'Себестоимость', field:'selfBuyCost', kind:'money'});
+  return rows;
+}
+
+// Раздел "Сайт": по аналогии с Ozon, но без группы "Заказы" и без "Самовыкупов".
+function buildMetricRowsSite(){
+  const rows = [];
+  rows.push({group:'sales', label:'Продажа, ₽', field:'salesRub', kind:'money'});
+  sharedProducts.forEach(p=>{
+    rows.push({group:'products', label:p.name, field:'salesQty.'+p.id, kind:'qty'});
+  });
+  EXTERNAL_FIELDS.forEach(([id,label])=>{
+    rows.push({group:'outside', label, field:'external.'+id, kind:'money'});
+  });
+  return rows;
+}
+
+function getResultRows(){
+  const rows = [
+    {label:'ДРР, %', key:'drr', pct:true},
+    {label:'Себестоимость проданного', key:'cogs'},
+    {label:'Доход на р/с', key:'netToAccount'},
+    {label:'Маржа', key:'margin'},
+    {label:'Операционная прибыль (EBITDA)', key:'ebitda'},
+    {label:'Чистая прибыль', key:'netProfit'},
+  ];
+  // Для ЯМ себестоимость — это то же самое ручное поле, что уже показано выше во "Внутри ЯМ",
+  // повторять его в итогах дня не нужно.
+  if(activeSectionType()==='ym') return rows.filter(r=>r.key!=='cogs');
+  // Для "Сайта" ДРР не считаем.
+  if(activeSectionType()==='site') return rows.filter(r=>r.key!=='drr');
+  return rows;
+}
+
+function renderDaily(){
+  populateMonthSelectors();
+  renderProducts();
+  renderTaxBox();
+  const type = activeSectionType();
+  document.getElementById('importBoxOzon').style.display = (type==='ozon') ? 'block' : 'none';
+  document.getElementById('importBoxWB').style.display = (type==='wb') ? 'block' : 'none';
+  renderKnownTypeMappings();
+  const key = document.getElementById('monthSelect').value;
+  if(!key) return;
+  const month = ensureMonth(key);
+  const filledCount = month.days.filter(isDayFilled).length;
+  document.getElementById('monthHint').textContent =
+    `заполнено дней: ${filledCount} из ${month.days.length}`;
+
+  const wrap = document.getElementById('dailyTableWrap');
+  const usesProducts = activeSectionType()!=='ym';
+  if(usesProducts && sharedProducts.length===0){
+    wrap.innerHTML = '<div class="empty-state">Сначала добавьте товары во вкладке «Товары» — тогда появятся строки продаж по товарам.</div>';
+    return;
+  }
+
+  const days = month.days;
+  const calcs = days.map(calcDay);
+  const metricRows = buildMetricRows();
+
+  // header
+  let head = `<thead><tr><th class="metric-col">Показатель</th>`;
+  days.forEach((day,idx)=>{
+    head += `<th><div class="day-head-inner">${fmtDate(day.date)}</div></th>`;
+  });
+  head += `</tr></thead>`;
+
+  // body
+  let body = '';
+  let prevGroup = null;
+  let editableRowIdx = 0;
+  const groupMeta = getGroupMeta();
+  metricRows.forEach(r=>{
+    if(r.group!==prevGroup){
+      body += `<tr class="grp-divider grp-${r.group} row-${r.group}"><td class="metric-label" colspan="${days.length+1}">${groupMeta[r.group].label}</td></tr>`;
+      prevGroup = r.group;
+    }
+    body += `<tr class="row-${r.group}"><td class="metric-label">${escapeHtml(r.label)}</td>`;
+    if(r.computed){
+      days.forEach((day,idx)=>{
+        const val = calcs[idx][r.key];
+        const cls = (typeof val==='number' && val<0) ? 'calc neg' : 'calc';
+        body += `<td class="${cls}">${fmt(val)}</td>`;
+      });
+    } else {
+      const thisRowIdx = editableRowIdx++;
+      days.forEach((day,idx)=>{
+        const val = getFieldValue(day, r.field);
+        body += `<td><input type="number" ${r.kind==='qty'?'step="1"':'step="0.01"'} value="${val}"
+          data-erow="${thisRowIdx}" data-ecol="${idx}"
+          onchange="updateDayField('${key}',${idx},'${r.field}',this.value)"></td>`;
+      });
+    }
+    body += `</tr>`;
+  });
+
+  // computed result rows
+  body += `<tr class="grp-divider grp-result row-result"><td class="metric-label" colspan="${days.length+1}">${groupMeta.result.label}</td></tr>`;
+  getResultRows().forEach(rr=>{
+    body += `<tr class="row-result"><td class="metric-label">${rr.label}</td>`;
+    calcs.forEach(c=>{
+      let raw = c[rr.key];
+      let text, cls='calc';
+      if(rr.pct){
+        text = raw===null ? '—' : fmt(raw*100)+'%';
+      } else {
+        text = fmt(raw);
+        cls += raw>=0 ? ' pos':' neg';
+      }
+      body += `<td class="${cls}">${text}</td>`;
+    });
+    body += `</tr>`;
+  });
+
+  wrap.innerHTML = `<table class="daily">${head}<tbody>${body}</tbody></table>`;
+}
+
+/* ======================= SUMMARY ======================= */
+function computeMonthTotals(key){
+  const t = activeSectionType();
+  if(t==='wb') return computeMonthTotalsWB(key);
+  if(t==='ym') return computeMonthTotalsYM(key);
+  if(t==='site') return computeMonthTotalsSite(key);
+  return computeMonthTotalsOzon(key);
+}
+
+function computeMonthTotalsOzon(key){
+  const month = ensureMonth(key);
+  const totals = {
+    orderedRub:0, orderedQty:0, salesRub:0, reward:0, logistics:0, fines:0,
+    extraPayments:0, storage:0, otherExpenses:0, adSpend:0,
+    cogs:0, netToAccount:0, externalTotal:0, selfBuyRub:0, selfBuyCost:0,
+    margin:0, tax:0, ebitda:0, netProfit:0
+  };
+  const drrList=[];
+  const salesByProduct = {};
+  const externalByField = Object.fromEntries(EXTERNAL_FIELDS.map(f=>[f[0],0]));
+  sharedProducts.forEach(p=>salesByProduct[p.id]=0);
+
+  month.days.forEach(day=>{
+    const c = calcDay(day);
+    totals.orderedRub += num(day.orderedRub);
+    totals.orderedQty += num(day.orderedQty);
+    totals.salesRub += c.salesRub;
+    totals.reward += num(day.reward);
+    totals.logistics += num(day.logistics);
+    totals.fines += num(day.fines);
+    totals.extraPayments += num(day.extraPayments);
+    totals.storage += num(day.storage);
+    totals.otherExpenses += num(day.otherExpenses);
+    totals.adSpend += c.adSpend;
+    totals.cogs += c.cogs;
+    totals.netToAccount += c.netToAccount;
+    totals.externalTotal += c.externalTotal;
+    totals.selfBuyRub += c.selfBuyRub;
+    totals.selfBuyCost += c.selfBuyCost;
+    totals.margin += c.margin;
+    totals.tax += c.tax;
+    totals.ebitda += c.ebitda;
+    totals.netProfit += c.netProfit;
+    if(c.drr!==null) drrList.push(c.drr);
+    sharedProducts.forEach(p=>{ salesByProduct[p.id]+= num(day.salesQty[p.id]); });
+    EXTERNAL_FIELDS.forEach(([id])=>{ externalByField[id] += num((day.external||{})[id]); });
+  });
+
+  const avgDrr = drrList.length? drrList.reduce((a,b)=>a+b,0)/drrList.length : null;
+  const marginality = totals.salesRub===0? null : totals.ebitda/totals.salesRub;
+
+  return {...totals, avgDrr, salesByProduct, externalByField, marginality};
+}
+
+function computeMonthTotalsWB(key){
+  const month = ensureMonth(key);
+  const totals = {
+    orderedRub:0, orderedQty:0, salesRub:0, boughtNetRub:0, commission:0,
+    logistics:0, fines:0, extraPayments:0, storage:0, paidAcceptance:0, otherExpenses:0, adsMemo:0,
+    cogs:0, netToAccount:0, externalTotal:0, selfBuyRub:0, selfBuyCost:0,
+    margin:0, tax:0, ebitda:0, netProfit:0
+  };
+  const drrList=[];
+  const salesByProduct = {};
+  const externalByField = Object.fromEntries(EXTERNAL_FIELDS.map(f=>[f[0],0]));
+  sharedProducts.forEach(p=>salesByProduct[p.id]=0);
+
+  month.days.forEach(day=>{
+    const c = calcDay(day);
+    totals.orderedRub += num(day.orderedRub);
+    totals.orderedQty += num(day.orderedQty);
+    totals.salesRub += c.salesRub;
+    totals.boughtNetRub += num(day.boughtNetRub);
+    totals.commission += c.commission;
+    totals.logistics += num(day.logistics);
+    totals.fines += num(day.fines);
+    totals.extraPayments += num(day.extraPayments);
+    totals.storage += num(day.storage);
+    totals.paidAcceptance += num(day.paidAcceptance);
+    totals.otherExpenses += num(day.otherExpenses);
+    totals.adsMemo += c.adsMemo;
+    totals.cogs += c.cogs;
+    totals.netToAccount += c.netToAccount;
+    totals.externalTotal += c.externalTotal;
+    totals.selfBuyRub += c.selfBuyRub;
+    totals.selfBuyCost += c.selfBuyCost;
+    totals.margin += c.margin;
+    totals.tax += c.tax;
+    totals.ebitda += c.ebitda;
+    totals.netProfit += c.netProfit;
+    if(c.drr!==null) drrList.push(c.drr);
+    sharedProducts.forEach(p=>{ salesByProduct[p.id]+= num(day.salesQty[p.id]); });
+    EXTERNAL_FIELDS.forEach(([id])=>{ externalByField[id] += num((day.external||{})[id]); });
+  });
+
+  const avgDrr = drrList.length? drrList.reduce((a,b)=>a+b,0)/drrList.length : null;
+  const marginality = totals.salesRub===0? null : totals.ebitda/totals.salesRub;
+
+  return {...totals, avgDrr, salesByProduct, externalByField, marginality};
+}
+
+function computeMonthTotalsYM(key){
+  const month = ensureMonth(key);
+  const totals = {
+    orderedRub:0, orderedQty:0, salesRub:0, commission:0, logistics:0, fines:0,
+    extraPayments:0, storage:0, paidAcceptance:0, otherExpenses:0, adSpend:0,
+    cogs:0, netToAccount:0, externalTotal:0, selfBuyRub:0, selfBuyCost:0,
+    margin:0, tax:0, ebitda:0, netProfit:0
+  };
+  const drrList=[];
+  const externalByField = Object.fromEntries(EXTERNAL_FIELDS.map(f=>[f[0],0]));
+
+  month.days.forEach(day=>{
+    const c = calcDay(day);
+    totals.orderedRub += num(day.orderedRub);
+    totals.orderedQty += num(day.orderedQty);
+    totals.salesRub += c.salesRub;
+    totals.commission += c.commission;
+    totals.logistics += num(day.logistics);
+    totals.fines += num(day.fines);
+    totals.extraPayments += num(day.extraPayments);
+    totals.storage += num(day.storage);
+    totals.paidAcceptance += num(day.paidAcceptance);
+    totals.otherExpenses += num(day.otherExpenses);
+    totals.adSpend += c.adSpend;
+    totals.cogs += c.cogs;
+    totals.netToAccount += c.netToAccount;
+    totals.externalTotal += c.externalTotal;
+    totals.selfBuyRub += c.selfBuyRub;
+    totals.selfBuyCost += c.selfBuyCost;
+    totals.margin += c.margin;
+    totals.tax += c.tax;
+    totals.ebitda += c.ebitda;
+    totals.netProfit += c.netProfit;
+    if(c.drr!==null) drrList.push(c.drr);
+    EXTERNAL_FIELDS.forEach(([id])=>{ externalByField[id] += num((day.external||{})[id]); });
+  });
+
+  const avgDrr = drrList.length? drrList.reduce((a,b)=>a+b,0)/drrList.length : null;
+  const marginality = totals.salesRub===0? null : totals.ebitda/totals.salesRub;
+
+  return {...totals, avgDrr, salesByProduct:{}, externalByField, marginality};
+}
+
+function computeMonthTotalsSite(key){
+  const month = ensureMonth(key);
+  const totals = {
+    salesRub:0, cogs:0, netToAccount:0, externalTotal:0, margin:0, tax:0, ebitda:0, netProfit:0
+  };
+  const salesByProduct = {};
+  const externalByField = Object.fromEntries(EXTERNAL_FIELDS.map(f=>[f[0],0]));
+  sharedProducts.forEach(p=>salesByProduct[p.id]=0);
+
+  month.days.forEach(day=>{
+    const c = calcDay(day);
+    totals.salesRub += c.salesRub;
+    totals.cogs += c.cogs;
+    totals.netToAccount += c.netToAccount;
+    totals.externalTotal += c.externalTotal;
+    totals.margin += c.margin;
+    totals.tax += c.tax;
+    totals.ebitda += c.ebitda;
+    totals.netProfit += c.netProfit;
+    sharedProducts.forEach(p=>{ salesByProduct[p.id]+= num(day.salesQty[p.id]); });
+    EXTERNAL_FIELDS.forEach(([id])=>{ externalByField[id] += num((day.external||{})[id]); });
+  });
+
+  const marginality = totals.salesRub===0? null : totals.ebitda/totals.salesRub;
+
+  return {...totals, avgDrr:null, salesByProduct, externalByField, marginality};
+}
+
+function renderSummary(){
+  populateMonthSelectors();
+  const key = document.getElementById('monthSelectSum').value;
+  if(!key){ document.getElementById('summaryBody').innerHTML=''; return; }
+  const month = ensureMonth(key);
+  const t = computeMonthTotals(key);
+  const type = activeSectionType();
+  if(type==='wb') return renderSummaryWB(month, t);
+  if(type==='ym') return renderSummaryYM(month, t);
+  if(type==='site') return renderSummarySite(month, t);
+  return renderSummaryOzon(month, t);
+}
+
+function renderSummaryOzon(month, t){
+
+  const body = document.getElementById('summaryBody');
+
+  if(month.days.length===0 && sharedProducts.length===0){
+    body.innerHTML = '<div class="empty-state">Добавьте товары и заполните хотя бы один день, чтобы увидеть итоги.</div>';
+    return;
+  }
+
+  const wfStep = (lbl,val,cls='')=>`
+    <div class="wf-step ${cls}"><div class="lbl">${lbl}</div><div class="val">${fmt(val)} ₽</div></div>`;
+
+  const productRows = sharedProducts.map(p=>{
+    const qty = t.salesByProduct[p.id]||0;
+    return `<div class="kpi"><div class="lbl">${escapeHtml(p.name)}</div><div class="val">${fmtQty(qty)} шт · ${fmt(qty*getCurrentProductCost(p))} ₽</div></div>`;
+  }).join('');
+
+  const externalRows = EXTERNAL_FIELDS.map(([id,label])=>`
+    <div class="kpi"><div class="lbl">${label}</div><div class="val">${fmt(t.externalByField[id])}</div></div>
+  `).join('');
+
+  body.innerHTML = `
+    <h3 class="subhead">Каскад P&amp;L</h3>
+    <div class="waterfall">
+      ${wfStep('Продажа, ₽', t.salesRub)}
+      ${wfStep('Доход на р/с', t.netToAccount, t.netToAccount>=0?'good':'bad')}
+      ${wfStep('Маржа', t.margin, t.margin>=0?'good':'bad')}
+      ${wfStep('Налог', t.tax, 'tax')}
+      ${wfStep('Операционная прибыль (EBITDA)', t.ebitda, t.ebitda>=0?'good':'bad')}
+      ${wfStep('Чистая прибыль', t.netProfit, 'final')}
+    </div>
+
+    <h3 class="subhead">Ключевые метрики</h3>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="lbl">Заказано, ₽</div><div class="val">${fmt(t.orderedRub)}</div></div>
+      <div class="kpi"><div class="lbl">Заказано, шт</div><div class="val">${fmtQty(t.orderedQty)}</div></div>
+      <div class="kpi"><div class="lbl">ДРР, % (сред.)</div><div class="val">${t.avgDrr===null?'—':fmt(t.avgDrr*100)+'%'}</div></div>
+      <div class="kpi"><div class="lbl">Реклама, ₽</div><div class="val">${fmt(t.adSpend)}</div></div>
+      <div class="kpi"><div class="lbl">Маржинальность (Операционная прибыль/Продажа)</div><div class="val">${t.marginality===null?'—':fmt(t.marginality*100)+'%'}</div></div>
+      <div class="kpi"><div class="lbl">Себестоимость проданного</div><div class="val">${fmt(t.cogs)}</div></div>
+      <div class="kpi"><div class="lbl">Расходы вне Ozon</div><div class="val">${fmt(t.externalTotal)}</div></div>
+    </div>
+
+    ${sharedProducts.length? `<h3 class="subhead">Продажи по товарам</h3><div class="kpi-grid">${productRows}</div>` : ''}
+
+    <h3 class="subhead">Расходы внутри Ozon за месяц</h3>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="lbl">Вознаграждение</div><div class="val">${fmt(t.reward)}</div></div>
+      <div class="kpi"><div class="lbl">Логистика</div><div class="val">${fmt(t.logistics)}</div></div>
+      <div class="kpi"><div class="lbl">Штрафы</div><div class="val">${fmt(t.fines)}</div></div>
+      <div class="kpi"><div class="lbl">Доплаты</div><div class="val">${fmt(t.extraPayments)}</div></div>
+      <div class="kpi"><div class="lbl">Хранение</div><div class="val">${fmt(t.storage)}</div></div>
+      <div class="kpi"><div class="lbl">Прочие расходы</div><div class="val">${fmt(t.otherExpenses)}</div></div>
+      <div class="kpi"><div class="lbl">Реклама</div><div class="val">${fmt(t.adSpend)}</div></div>
+    </div>
+
+    <h3 class="subhead">Расходы вне Ozon за месяц</h3>
+    <div class="kpi-grid">${externalRows}</div>
+  `;
+}
+
+function renderSummaryWB(month, t){
+  const body = document.getElementById('summaryBody');
+
+  if(month.days.length===0 && sharedProducts.length===0){
+    body.innerHTML = '<div class="empty-state">Добавьте товары и заполните хотя бы один день, чтобы увидеть итоги.</div>';
+    return;
+  }
+
+  const wfStep = (lbl,val,cls='')=>`
+    <div class="wf-step ${cls}"><div class="lbl">${lbl}</div><div class="val">${fmt(val)} ₽</div></div>`;
+
+  const productRows = sharedProducts.map(p=>{
+    const qty = t.salesByProduct[p.id]||0;
+    return `<div class="kpi"><div class="lbl">${escapeHtml(p.name)}</div><div class="val">${fmtQty(qty)} шт · ${fmt(qty*getCurrentProductCost(p))} ₽</div></div>`;
+  }).join('');
+
+  const externalRows = EXTERNAL_FIELDS.map(([id,label])=>`
+    <div class="kpi"><div class="lbl">${label}</div><div class="val">${fmt(t.externalByField[id])}</div></div>
+  `).join('');
+
+  body.innerHTML = `
+    <h3 class="subhead">Каскад P&amp;L</h3>
+    <div class="waterfall">
+      ${wfStep('Продажа, ₽', t.salesRub)}
+      ${wfStep('Доход на р/с', t.netToAccount, t.netToAccount>=0?'good':'bad')}
+      ${wfStep('Маржа', t.margin, t.margin>=0?'good':'bad')}
+      ${wfStep('Налог', t.tax, 'tax')}
+      ${wfStep('Операционная прибыль (EBITDA)', t.ebitda, t.ebitda>=0?'good':'bad')}
+      ${wfStep('Чистая прибыль', t.netProfit, 'final')}
+    </div>
+
+    <h3 class="subhead">Ключевые метрики</h3>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="lbl">Заказано до СПП, ₽</div><div class="val">${fmt(t.orderedRub)}</div></div>
+      <div class="kpi"><div class="lbl">Заказано, шт</div><div class="val">${fmtQty(t.orderedQty)}</div></div>
+      <div class="kpi"><div class="lbl">ДРР, % (сред.)</div><div class="val">${t.avgDrr===null?'—':fmt(t.avgDrr*100)+'%'}</div></div>
+      <div class="kpi"><div class="lbl">В т.ч. реклама, ₽</div><div class="val">${fmt(t.adsMemo)}</div></div>
+      <div class="kpi"><div class="lbl">Маржинальность (Операционная прибыль/Продажа)</div><div class="val">${t.marginality===null?'—':fmt(t.marginality*100)+'%'}</div></div>
+      <div class="kpi"><div class="lbl">Себестоимость проданного</div><div class="val">${fmt(t.cogs)}</div></div>
+      <div class="kpi"><div class="lbl">Расходы вне ВБ</div><div class="val">${fmt(t.externalTotal)}</div></div>
+    </div>
+
+    ${sharedProducts.length? `<h3 class="subhead">Выкуплено по товарам</h3><div class="kpi-grid">${productRows}</div>` : ''}
+
+    <h3 class="subhead">Расходы внутри ВБ за месяц</h3>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="lbl">Выкуплено (после СПП и комиссии)</div><div class="val">${fmt(t.boughtNetRub)}</div></div>
+      <div class="kpi"><div class="lbl">Комиссия WB (авто)</div><div class="val">${fmt(Math.abs(t.commission))}</div></div>
+      <div class="kpi"><div class="lbl">Логистика</div><div class="val">${fmt(t.logistics)}</div></div>
+      <div class="kpi"><div class="lbl">Штрафы</div><div class="val">${fmt(t.fines)}</div></div>
+      <div class="kpi"><div class="lbl">Доплаты</div><div class="val">${fmt(t.extraPayments)}</div></div>
+      <div class="kpi"><div class="lbl">Хранение</div><div class="val">${fmt(t.storage)}</div></div>
+      <div class="kpi"><div class="lbl">Платная приёмка</div><div class="val">${fmt(t.paidAcceptance)}</div></div>
+      <div class="kpi"><div class="lbl">Прочие расходы</div><div class="val">${fmt(t.otherExpenses)}</div></div>
+    </div>
+
+    <h3 class="subhead">Расходы вне ВБ за месяц</h3>
+    <div class="kpi-grid">${externalRows}</div>
+  `;
+}
+
+function renderSummaryYM(month, t){
+  const body = document.getElementById('summaryBody');
+
+  if(month.days.length===0){
+    body.innerHTML = '<div class="empty-state">Заполните хотя бы один день, чтобы увидеть итоги.</div>';
+    return;
+  }
+
+  const wfStep = (lbl,val,cls='')=>`
+    <div class="wf-step ${cls}"><div class="lbl">${lbl}</div><div class="val">${fmt(val)} ₽</div></div>`;
+
+  const externalRows = EXTERNAL_FIELDS.map(([id,label])=>`
+    <div class="kpi"><div class="lbl">${label}</div><div class="val">${fmt(t.externalByField[id])}</div></div>
+  `).join('');
+
+  body.innerHTML = `
+    <h3 class="subhead">Каскад P&amp;L</h3>
+    <div class="waterfall">
+      ${wfStep('Продажа, ₽', t.salesRub)}
+      ${wfStep('Доход на р/с', t.netToAccount, t.netToAccount>=0?'good':'bad')}
+      ${wfStep('Маржа', t.margin, t.margin>=0?'good':'bad')}
+      ${wfStep('Налог', t.tax, 'tax')}
+      ${wfStep('Операционная прибыль (EBITDA)', t.ebitda, t.ebitda>=0?'good':'bad')}
+      ${wfStep('Чистая прибыль', t.netProfit, 'final')}
+    </div>
+
+    <h3 class="subhead">Ключевые метрики</h3>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="lbl">Заказано до скидки, ₽</div><div class="val">${fmt(t.orderedRub)}</div></div>
+      <div class="kpi"><div class="lbl">Заказано, шт</div><div class="val">${fmtQty(t.orderedQty)}</div></div>
+      <div class="kpi"><div class="lbl">ДРР, % (сред.)</div><div class="val">${t.avgDrr===null?'—':fmt(t.avgDrr*100)+'%'}</div></div>
+      <div class="kpi"><div class="lbl">Реклама, ₽</div><div class="val">${fmt(t.adSpend)}</div></div>
+      <div class="kpi"><div class="lbl">Маржинальность (Операционная прибыль/Продажа)</div><div class="val">${t.marginality===null?'—':fmt(t.marginality*100)+'%'}</div></div>
+      <div class="kpi"><div class="lbl">Себестоимость проданного</div><div class="val">${fmt(t.cogs)}</div></div>
+      <div class="kpi"><div class="lbl">Расходы вне ЯМ</div><div class="val">${fmt(t.externalTotal)}</div></div>
+    </div>
+
+    <h3 class="subhead">Расходы внутри ЯМ за месяц</h3>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="lbl">Комиссия ЯМ</div><div class="val">${fmt(Math.abs(t.commission))}</div></div>
+      <div class="kpi"><div class="lbl">Логистика</div><div class="val">${fmt(t.logistics)}</div></div>
+      <div class="kpi"><div class="lbl">Штрафы</div><div class="val">${fmt(t.fines)}</div></div>
+      <div class="kpi"><div class="lbl">Доплаты</div><div class="val">${fmt(t.extraPayments)}</div></div>
+      <div class="kpi"><div class="lbl">Хранение</div><div class="val">${fmt(t.storage)}</div></div>
+      <div class="kpi"><div class="lbl">Стоимость приёмки</div><div class="val">${fmt(t.paidAcceptance)}</div></div>
+      <div class="kpi"><div class="lbl">Прочие расходы</div><div class="val">${fmt(t.otherExpenses)}</div></div>
+      <div class="kpi"><div class="lbl">Реклама</div><div class="val">${fmt(t.adSpend)}</div></div>
+    </div>
+
+    <h3 class="subhead">Расходы вне ЯМ за месяц</h3>
+    <div class="kpi-grid">${externalRows}</div>
+  `;
+}
+
+function renderSummarySite(month, t){
+  const body = document.getElementById('summaryBody');
+
+  if(month.days.length===0 && sharedProducts.length===0){
+    body.innerHTML = '<div class="empty-state">Добавьте товары и заполните хотя бы один день, чтобы увидеть итоги.</div>';
+    return;
+  }
+
+  const wfStep = (lbl,val,cls='')=>`
+    <div class="wf-step ${cls}"><div class="lbl">${lbl}</div><div class="val">${fmt(val)} ₽</div></div>`;
+
+  const productRows = sharedProducts.map(p=>{
+    const qty = t.salesByProduct[p.id]||0;
+    return `<div class="kpi"><div class="lbl">${escapeHtml(p.name)}</div><div class="val">${fmtQty(qty)} шт · ${fmt(qty*getCurrentProductCost(p))} ₽</div></div>`;
+  }).join('');
+
+  const externalRows = EXTERNAL_FIELDS.map(([id,label])=>`
+    <div class="kpi"><div class="lbl">${label}</div><div class="val">${fmt(t.externalByField[id])}</div></div>
+  `).join('');
+
+  body.innerHTML = `
+    <h3 class="subhead">Каскад P&amp;L</h3>
+    <div class="waterfall">
+      ${wfStep('Продажа, ₽', t.salesRub)}
+      ${wfStep('Доход на р/с', t.netToAccount, t.netToAccount>=0?'good':'bad')}
+      ${wfStep('Маржа', t.margin, t.margin>=0?'good':'bad')}
+      ${wfStep('Налог', t.tax, 'tax')}
+      ${wfStep('Операционная прибыль (EBITDA)', t.ebitda, t.ebitda>=0?'good':'bad')}
+      ${wfStep('Чистая прибыль', t.netProfit, 'final')}
+    </div>
+
+    <h3 class="subhead">Ключевые метрики</h3>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="lbl">Маржинальность (Операционная прибыль/Продажа)</div><div class="val">${t.marginality===null?'—':fmt(t.marginality*100)+'%'}</div></div>
+      <div class="kpi"><div class="lbl">Себестоимость проданного</div><div class="val">${fmt(t.cogs)}</div></div>
+      <div class="kpi"><div class="lbl">Расходы вне Сайта</div><div class="val">${fmt(t.externalTotal)}</div></div>
+    </div>
+
+    ${sharedProducts.length? `<h3 class="subhead">Продажи по товарам</h3><div class="kpi-grid">${productRows}</div>` : ''}
+
+    <h3 class="subhead">Расходы вне Сайта за месяц</h3>
+    <div class="kpi-grid">${externalRows}</div>
+  `;
+}
+
+/* ======================= UTIL ======================= */
+function num(v){ const n=parseFloat(v); return isNaN(n)?0:n; }
+function fmt(v){
+  if(v===null || v===undefined || isNaN(v)) return '—';
+  return Number(v).toLocaleString('ru-RU', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function fmtQty(v){
+  if(v===null || v===undefined || isNaN(v)) return '—';
+  return Number(v).toLocaleString('ru-RU', {maximumFractionDigits:0});
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+/* ======================= BOOT ======================= */
+async function startApp(){
+  rootState = await loadRootAsync();
+  await loadSharedProducts();
+  // если у какого-то раздела ещё нет ни одного месяца — создаём текущий и сохраняем именно этот раздел
+  await Promise.all(SECTIONS_CONFIG.map(async cfg=>{
+    const sectionData = rootState.sections[cfg.id];
+    if(Object.keys(sectionData.months).length===0){
+      ensureMonth(currentMonthKey(), sectionData, cfg.type);
+      await save(cfg.id);
+    }
+  }));
+  state = rootState.sections[rootState.activeSectionId];
+
+  populateMonthSelectors();
+  renderTaxBox();
+  renderDaily();
+  renderSummary();
+  showView('section');
+}
+
+function showLogin(){
+  document.getElementById('loginScreen').style.display = 'block';
+  document.getElementById('mainApp').style.display = 'none';
+}
+function showApp(){
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'block';
+}
+
+if(USE_FIREBASE){
+  try{
+    if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    showLogin();
+    firebase.auth().onAuthStateChanged(async (user)=>{
+      if(user){
+        document.getElementById('userEmailLabel').textContent = user.email;
+        document.getElementById('userBar').style.display = 'flex';
+        showApp();
+        await startApp();
+      } else {
+        showLogin();
+      }
+    });
+  }catch(e){
+    showLogin();
+    document.getElementById('loginError').textContent = 'Не удалось подключиться к Firebase: '+e.message;
+  }
+
+  document.getElementById('loginBtn').addEventListener('click', async ()=>{
+    const email = document.getElementById('login_email').value.trim();
+    const password = document.getElementById('login_password').value;
+    const errEl = document.getElementById('loginError');
+    errEl.textContent = '';
+    if(!email || !password){ errEl.textContent = 'Введите email и пароль.'; return; }
+    const btn = document.getElementById('loginBtn');
+    btn.disabled = true; btn.textContent = 'Вхожу…';
+    try{
+      await firebase.auth().signInWithEmailAndPassword(email, password);
+    }catch(e){
+      const badCreds = ['auth/invalid-credential','auth/wrong-password','auth/user-not-found','auth/invalid-email'].includes(e.code);
+      errEl.textContent = badCreds ? 'Неверный email или пароль.' : ('Не удалось войти: '+e.message);
+    }
+    btn.disabled = false; btn.textContent = 'Войти';
+  });
+  document.getElementById('login_password').addEventListener('keydown', (e)=>{
+    if(e.key==='Enter') document.getElementById('loginBtn').click();
+  });
+  document.getElementById('logoutBtn').addEventListener('click', async ()=>{
+    await firebase.auth().signOut();
+  });
+} else {
+  // локальный тестовый режим (window.storage) — вход не нужен
+  showApp();
+  startApp();
+}
+</script>
+</body>
+</html>
