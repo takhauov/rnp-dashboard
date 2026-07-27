@@ -165,7 +165,14 @@ input,select{font-family:var(--sans);}
 .pc-edit-form input[type=number]{width:130px;}
 .pc-history{margin-top:8px;font-size:11px;color:var(--ink-dim);font-family:var(--mono);line-height:1.6;}
 .pc-articles{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);}
-.pc-articles-title{font-size:11px;color:var(--ink-dim);margin-bottom:6px;}
+.pc-articles-title{
+  font-size:11.5px;color:var(--ink-dim);cursor:pointer;user-select:none;
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  font-weight:600;
+}
+.pc-articles-title:hover{color:var(--accent);}
+.pc-articles-arrow{font-size:10px;color:var(--ink-dim);}
+.pc-articles-body{margin-top:8px;}
 .pc-article-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
 .pc-article-row label{font-size:11.5px;color:var(--ink-dim);min-width:170px;}
 .pc-article-row input{border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-size:12px;font-family:var(--mono);width:160px;}
@@ -216,6 +223,8 @@ input,select{font-family:var(--sans);}
 .month-bar button{
   background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:8px 13px;font-size:12.5px;font-weight:550;
 }
+.month-bar .danger-btn{color:var(--bad);border-color:#edc3cc;}
+.month-bar .danger-btn:hover{background:var(--c-outside);}
 .month-bar .spacer{flex:1;}
 
 /* ---------- transposed table ---------- */
@@ -249,6 +258,11 @@ table.daily td.calc{font-family:var(--mono);color:var(--ink-dim);}
 table.daily td.calc.pos{color:var(--good);}
 table.daily td.calc.neg{color:var(--bad);}
 table.daily .day-head-inner{text-align:center;font-weight:650;color:var(--navy);font-size:12px;}
+table.daily .clear-day-btn{
+  display:block;margin:3px auto 0;background:none;border:none;color:var(--ink-dim);
+  font-size:9.5px;font-weight:500;text-transform:none;padding:1px 4px;cursor:pointer;
+}
+table.daily .clear-day-btn:hover{color:var(--bad);text-decoration:underline;}
 
 /* group divider rows */
 tr.grp-divider td{
@@ -401,6 +415,7 @@ h3.subhead{font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:
       <div class="month-bar">
         <select id="monthSelect" onchange="setSelectedMonth(this.value); renderDaily();"></select>
         <button onclick="addMonth()">+ Добавить месяц</button>
+        <button class="danger-btn" onclick="deleteMonth()">Удалить месяц</button>
         <div class="spacer"></div>
         <span style="font-size:12px;color:var(--ink-dim);" id="monthHint"></span>
       </div>
@@ -611,12 +626,21 @@ const PRODUCT_ARTICLE_SECTIONS = [
 // Разделы, которые используют общий каталог товаров (для расчёта себестоимости по количеству).
 const SECTIONS_USING_PRODUCTS = ['ozon_sekai','ozon_meld','wb_sekai','site'];
 
+// Товар попадает в конкретный раздел (и участвует там в расчёте себестоимости), только если
+// для него заполнен артикул этой площадки — а для "Сайта" (там нет автоматического импорта
+// и общего понятия артикула) используется отдельная галочка "включить в Сайт".
+function productsForSection(sectionId){
+  if(sectionId==='site') return sharedProducts.filter(p=>p.includeInSite);
+  return sharedProducts.filter(p=>(p.articles||{})[sectionId]);
+}
+
 function defaultSharedProduct(name, cost){
   return {
     id: 'p'+Date.now()+Math.random().toString(36).slice(2,6),
     name,
     costHistory: [{date: todayStr(), cost}],
-    articles: Object.fromEntries(PRODUCT_ARTICLE_SECTIONS.map(s=>[s.id,'']))
+    articles: Object.fromEntries(PRODUCT_ARTICLE_SECTIONS.map(s=>[s.id,''])),
+    includeInSite: false
   };
 }
 
@@ -626,6 +650,7 @@ function migrateSharedProduct(p){
   }
   if(!p.articles) p.articles = {};
   PRODUCT_ARTICLE_SECTIONS.forEach(s=>{ if(p.articles[s.id]===undefined) p.articles[s.id]=''; });
+  if(p.includeInSite===undefined) p.includeInSite = false;
   // Старое единое поле sku (до разделения по площадкам) — переносим в Ozon SEKAI по умолчанию.
   if(p.sku!==undefined){
     if(!p.articles.ozon_sekai) p.articles.ozon_sekai = p.sku;
@@ -940,6 +965,13 @@ document.addEventListener('keydown', function(e){
 
 /* ======================= PRODUCTS ======================= */
 let openProductEdit = null;
+let openArticleCards = new Set(); // id товаров, у которых блок артикулов сейчас развёрнут (по умолчанию свёрнут)
+
+function toggleArticles(id){
+  if(openArticleCards.has(id)) openArticleCards.delete(id);
+  else openArticleCards.add(id);
+  renderProducts();
+}
 
 function renderProducts(){
   const list = document.getElementById('productList');
@@ -952,6 +984,7 @@ function renderProducts(){
     const hist = (p.costHistory||[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
     const currentEntry = hist.filter(h=>h.date<=today).slice(-1)[0] || hist[0];
     const isOpen = openProductEdit===p.id;
+    const isArticlesOpen = openArticleCards.has(p.id);
     const historyLines = hist.slice().reverse().map(h=>`с ${fmtDate(h.date)} — ${fmt(h.cost)} ₽`).join('<br>');
     const articleRows = PRODUCT_ARTICLE_SECTIONS.map(s=>`
       <div class="pc-article-row">
@@ -978,8 +1011,20 @@ function renderProducts(){
       </div>
       ${hist.length>1?`<div class="pc-history">${historyLines}</div>`:''}
       <div class="pc-articles">
-        <div class="pc-articles-title">Артикулы для сопоставления при импорте:</div>
-        ${articleRows}
+        <div class="pc-articles-title" onclick="toggleArticles('${p.id}')">
+          <span>Артикулы для сопоставления при импорте</span>
+          <span class="pc-articles-arrow">${isArticlesOpen?'▾':'▸'}</span>
+        </div>
+        <div class="pc-articles-body" style="display:${isArticlesOpen?'block':'none'};">
+          ${articleRows}
+          <div class="pc-article-row">
+            <label>Сайт</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:400;color:var(--ink);cursor:pointer;">
+              <input type="checkbox" ${p.includeInSite?'checked':''} onchange="updateProductSiteFlag('${p.id}', this.checked)">
+              добавить в раздел «Сайт» для подсчёта себестоимости
+            </label>
+          </div>
+        </div>
       </div>
     </div>`;
   }).join('');
@@ -1011,6 +1056,14 @@ function updateProductArticle(id, sectionId, value){
   if(!p.articles) p.articles = {};
   p.articles[sectionId] = value.trim();
   saveSharedProducts();
+  renderDaily(); renderSummary();
+}
+function updateProductSiteFlag(id, checked){
+  const p = sharedProducts.find(p=>p.id===id);
+  if(!p) return;
+  p.includeInSite = !!checked;
+  saveSharedProducts();
+  renderDaily(); renderSummary();
 }
 function saveCost(id){
   const btn = document.getElementById('costSaveBtn-'+id);
@@ -1081,6 +1134,32 @@ function addMonth(){
   renderDaily(); renderSummary();
 }
 
+function clearDay(monthKey, idx){
+  const month = ensureMonth(monthKey);
+  const day = month.days[idx];
+  if(!day) return;
+  if(!confirm(`Очистить все значения за ${fmtDate(day.date)}? Дата останется, но данные будут стёрты.`)) return;
+  month.days[idx] = newDayRow(day.date, activeSectionType());
+  save();
+  renderDaily();
+  renderSummary();
+}
+
+function deleteMonth(){
+  const key = document.getElementById('monthSelect').value;
+  if(!key) return;
+  if(!confirm(`Удалить месяц «${monthLabel(key)}» вместе со всеми введёнными за него данными? Это необратимо.`)) return;
+  delete state.months[key];
+  if(Object.keys(state.months).length===0){
+    // раздел не может остаться совсем без месяцев — создаём текущий календарный
+    ensureMonth(currentMonthKey());
+  }
+  selectedMonthKey = null; // пересчитаем дефолт (текущий месяц, если есть, иначе последний оставшийся)
+  save();
+  populateMonthSelectors();
+  renderDaily(); renderSummary();
+}
+
 /* ======================= DAILY DATA MODEL ======================= */
 function newDayRow(dateStr, type){
   const t = type || activeSectionType();
@@ -1140,7 +1219,7 @@ function calcDayOzon(day){
   const reward = num(day.reward);
 
   let cogs = 0;
-  sharedProducts.forEach(p=>{
+  productsForSection(rootState.activeSectionId).forEach(p=>{
     const qty = num(day.salesQty[p.id]);
     cogs += qty * getProductCostAt(p, day.date);
   });
@@ -1175,7 +1254,7 @@ function calcDayWB(day){
   const commission = salesRub - boughtNetRub;
 
   let cogs = 0;
-  sharedProducts.forEach(p=>{
+  productsForSection('wb_sekai').forEach(p=>{
     const qty = num(day.salesQty[p.id]);
     cogs += qty * getProductCostAt(p, day.date);
   });
@@ -1245,7 +1324,7 @@ function calcDaySite(day){
   const salesRub = num(day.salesRub);
 
   let cogs = 0;
-  sharedProducts.forEach(p=>{
+  productsForSection('site').forEach(p=>{
     const qty = num(day.salesQty[p.id]);
     cogs += qty * getProductCostAt(p, day.date);
   });
@@ -2002,7 +2081,7 @@ function buildMetricRowsOzon(){
   rows.push({group:'orders', label:'Заказано, ₽', field:'orderedRub', kind:'money'});
   rows.push({group:'orders', label:'Заказано, шт', field:'orderedQty', kind:'qty'});
   rows.push({group:'sales', label:'Продажа, ₽', field:'salesRub', kind:'money'});
-  sharedProducts.forEach(p=>{
+  productsForSection(rootState.activeSectionId).forEach(p=>{
     rows.push({group:'products', label:p.name, field:'salesQty.'+p.id, kind:'qty'});
   });
   rows.push({group:'inside', label:'Вознаграждение', field:'reward', kind:'money'});
@@ -2029,7 +2108,7 @@ function buildMetricRowsWB(){
   rows.push({group:'orders', label:'Заказано до СПП, ₽', field:'orderedRub', kind:'money'});
   rows.push({group:'orders', label:'Заказано, шт', field:'orderedQty', kind:'qty'});
   rows.push({group:'sales', label:'Продажа, ₽', field:'salesRub', kind:'money'});
-  sharedProducts.forEach(p=>{
+  productsForSection('wb_sekai').forEach(p=>{
     rows.push({group:'products', label:p.name, field:'salesQty.'+p.id, kind:'qty'});
   });
   rows.push({group:'inside', label:'Выкуплено (за вычетом СПП и комиссии)', field:'boughtNetRub', kind:'money'});
@@ -2077,7 +2156,7 @@ function buildMetricRowsYM(){
 function buildMetricRowsSite(){
   const rows = [];
   rows.push({group:'sales', label:'Продажа, ₽', field:'salesRub', kind:'money'});
-  sharedProducts.forEach(p=>{
+  productsForSection('site').forEach(p=>{
     rows.push({group:'products', label:p.name, field:'salesQty.'+p.id, kind:'qty'});
   });
   EXTERNAL_FIELDS.forEach(([id,label])=>{
@@ -2120,8 +2199,10 @@ function renderDaily(){
 
   const wrap = document.getElementById('dailyTableWrap');
   const usesProducts = activeSectionType()!=='ym';
-  if(usesProducts && sharedProducts.length===0){
-    wrap.innerHTML = '<div class="empty-state">Сначала добавьте товары во вкладке «Товары» — тогда появятся строки продаж по товарам.</div>';
+  if(usesProducts && productsForSection(rootState.activeSectionId).length===0){
+    wrap.innerHTML = sharedProducts.length===0
+      ? '<div class="empty-state">Сначала добавьте товары на странице «Товары» — тогда появятся строки продаж по товарам.</div>'
+      : '<div class="empty-state">Для этого раздела нет ни одного товара с заполненным артикулом (или галочкой «Сайт»). Откройте «Товары» и укажите артикул/отметьте галочку для нужных товаров.</div>';
     return;
   }
 
@@ -2132,7 +2213,7 @@ function renderDaily(){
   // header
   let head = `<thead><tr><th class="metric-col">Показатель</th>`;
   days.forEach((day,idx)=>{
-    head += `<th><div class="day-head-inner">${fmtDate(day.date)}</div></th>`;
+    head += `<th><div class="day-head-inner">${fmtDate(day.date)}<button class="clear-day-btn" onclick="clearDay('${key}',${idx})" title="Очистить день (дата останется)">Очистить</button></div></th>`;
   });
   head += `</tr></thead>`;
 
@@ -2206,7 +2287,7 @@ function computeMonthTotalsOzon(key){
   const drrList=[];
   const salesByProduct = {};
   const externalByField = Object.fromEntries(EXTERNAL_FIELDS.map(f=>[f[0],0]));
-  sharedProducts.forEach(p=>salesByProduct[p.id]=0);
+  productsForSection(rootState.activeSectionId).forEach(p=>salesByProduct[p.id]=0);
 
   month.days.forEach(day=>{
     const c = calcDay(day);
@@ -2230,7 +2311,7 @@ function computeMonthTotalsOzon(key){
     totals.ebitda += c.ebitda;
     totals.netProfit += c.netProfit;
     if(c.drr!==null) drrList.push(c.drr);
-    sharedProducts.forEach(p=>{ salesByProduct[p.id]+= num(day.salesQty[p.id]); });
+    productsForSection(rootState.activeSectionId).forEach(p=>{ salesByProduct[p.id]+= num(day.salesQty[p.id]); });
     EXTERNAL_FIELDS.forEach(([id])=>{ externalByField[id] += num((day.external||{})[id]); });
   });
 
@@ -2251,7 +2332,7 @@ function computeMonthTotalsWB(key){
   const drrList=[];
   const salesByProduct = {};
   const externalByField = Object.fromEntries(EXTERNAL_FIELDS.map(f=>[f[0],0]));
-  sharedProducts.forEach(p=>salesByProduct[p.id]=0);
+  productsForSection('wb_sekai').forEach(p=>salesByProduct[p.id]=0);
 
   month.days.forEach(day=>{
     const c = calcDay(day);
@@ -2277,7 +2358,7 @@ function computeMonthTotalsWB(key){
     totals.ebitda += c.ebitda;
     totals.netProfit += c.netProfit;
     if(c.drr!==null) drrList.push(c.drr);
-    sharedProducts.forEach(p=>{ salesByProduct[p.id]+= num(day.salesQty[p.id]); });
+    productsForSection('wb_sekai').forEach(p=>{ salesByProduct[p.id]+= num(day.salesQty[p.id]); });
     EXTERNAL_FIELDS.forEach(([id])=>{ externalByField[id] += num((day.external||{})[id]); });
   });
 
@@ -2337,7 +2418,7 @@ function computeMonthTotalsSite(key){
   };
   const salesByProduct = {};
   const externalByField = Object.fromEntries(EXTERNAL_FIELDS.map(f=>[f[0],0]));
-  sharedProducts.forEach(p=>salesByProduct[p.id]=0);
+  productsForSection('site').forEach(p=>salesByProduct[p.id]=0);
 
   month.days.forEach(day=>{
     const c = calcDay(day);
@@ -2349,7 +2430,7 @@ function computeMonthTotalsSite(key){
     totals.tax += c.tax;
     totals.ebitda += c.ebitda;
     totals.netProfit += c.netProfit;
-    sharedProducts.forEach(p=>{ salesByProduct[p.id]+= num(day.salesQty[p.id]); });
+    productsForSection('site').forEach(p=>{ salesByProduct[p.id]+= num(day.salesQty[p.id]); });
     EXTERNAL_FIELDS.forEach(([id])=>{ externalByField[id] += num((day.external||{})[id]); });
   });
 
@@ -2383,7 +2464,7 @@ function renderSummaryOzon(month, t){
   const wfStep = (lbl,val,cls='')=>`
     <div class="wf-step ${cls}"><div class="lbl">${lbl}</div><div class="val">${fmt(val)} ₽</div></div>`;
 
-  const productRows = sharedProducts.map(p=>{
+  const productRows = productsForSection(rootState.activeSectionId).map(p=>{
     const qty = t.salesByProduct[p.id]||0;
     return `<div class="kpi"><div class="lbl">${escapeHtml(p.name)}</div><div class="val">${fmtQty(qty)} шт · ${fmt(qty*getCurrentProductCost(p))} ₽</div></div>`;
   }).join('');
@@ -2414,7 +2495,7 @@ function renderSummaryOzon(month, t){
       <div class="kpi"><div class="lbl">Расходы вне Ozon</div><div class="val">${fmt(t.externalTotal)}</div></div>
     </div>
 
-    ${sharedProducts.length? `<h3 class="subhead">Продажи по товарам</h3><div class="kpi-grid">${productRows}</div>` : ''}
+    ${productsForSection(rootState.activeSectionId).length? `<h3 class="subhead">Продажи по товарам</h3><div class="kpi-grid">${productRows}</div>` : ''}
 
     <h3 class="subhead">Расходы внутри Ozon за месяц</h3>
     <div class="kpi-grid">
@@ -2443,7 +2524,7 @@ function renderSummaryWB(month, t){
   const wfStep = (lbl,val,cls='')=>`
     <div class="wf-step ${cls}"><div class="lbl">${lbl}</div><div class="val">${fmt(val)} ₽</div></div>`;
 
-  const productRows = sharedProducts.map(p=>{
+  const productRows = productsForSection('wb_sekai').map(p=>{
     const qty = t.salesByProduct[p.id]||0;
     return `<div class="kpi"><div class="lbl">${escapeHtml(p.name)}</div><div class="val">${fmtQty(qty)} шт · ${fmt(qty*getCurrentProductCost(p))} ₽</div></div>`;
   }).join('');
@@ -2474,7 +2555,7 @@ function renderSummaryWB(month, t){
       <div class="kpi"><div class="lbl">Расходы вне ВБ</div><div class="val">${fmt(t.externalTotal)}</div></div>
     </div>
 
-    ${sharedProducts.length? `<h3 class="subhead">Выкуплено по товарам</h3><div class="kpi-grid">${productRows}</div>` : ''}
+    ${productsForSection('wb_sekai').length? `<h3 class="subhead">Выкуплено по товарам</h3><div class="kpi-grid">${productRows}</div>` : ''}
 
     <h3 class="subhead">Расходы внутри ВБ за месяц</h3>
     <div class="kpi-grid">
@@ -2558,7 +2639,7 @@ function renderSummarySite(month, t){
   const wfStep = (lbl,val,cls='')=>`
     <div class="wf-step ${cls}"><div class="lbl">${lbl}</div><div class="val">${fmt(val)} ₽</div></div>`;
 
-  const productRows = sharedProducts.map(p=>{
+  const productRows = productsForSection('site').map(p=>{
     const qty = t.salesByProduct[p.id]||0;
     return `<div class="kpi"><div class="lbl">${escapeHtml(p.name)}</div><div class="val">${fmtQty(qty)} шт · ${fmt(qty*getCurrentProductCost(p))} ₽</div></div>`;
   }).join('');
@@ -2585,7 +2666,7 @@ function renderSummarySite(month, t){
       <div class="kpi"><div class="lbl">Расходы вне Сайта</div><div class="val">${fmt(t.externalTotal)}</div></div>
     </div>
 
-    ${sharedProducts.length? `<h3 class="subhead">Продажи по товарам</h3><div class="kpi-grid">${productRows}</div>` : ''}
+    ${productsForSection('site').length? `<h3 class="subhead">Продажи по товарам</h3><div class="kpi-grid">${productRows}</div>` : ''}
 
     <h3 class="subhead">Расходы вне Сайта за месяц</h3>
     <div class="kpi-grid">${externalRows}</div>
@@ -2610,6 +2691,26 @@ function escapeHtml(s){
 async function startApp(){
   rootState = await loadRootAsync();
   await loadSharedProducts();
+
+  // Одноразовая подстраховка при введении галочки "Сайт": если товар уже фигурировал
+  // в продажах раздела "Сайт" (были заполненные количества), включаем галочку автоматически,
+  // чтобы уже введённые данные не "пропали из виду" молча.
+  const siteSection = rootState.sections.site;
+  if(siteSection){
+    let changed = false;
+    Object.values(siteSection.months||{}).forEach(month=>{
+      (month.days||[]).forEach(day=>{
+        Object.entries(day.salesQty||{}).forEach(([pid, qty])=>{
+          if(num(qty)!==0){
+            const p = sharedProducts.find(x=>x.id===pid);
+            if(p && !p.includeInSite){ p.includeInSite = true; changed = true; }
+          }
+        });
+      });
+    });
+    if(changed) await saveSharedProducts();
+  }
+
   // если у какого-то раздела ещё нет ни одного месяца — создаём текущий и сохраняем именно этот раздел
   await Promise.all(SECTIONS_CONFIG.map(async cfg=>{
     const sectionData = rootState.sections[cfg.id];
