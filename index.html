@@ -258,11 +258,6 @@ table.daily td.calc{font-family:var(--mono);color:var(--ink-dim);}
 table.daily td.calc.pos{color:var(--good);}
 table.daily td.calc.neg{color:var(--bad);}
 table.daily .day-head-inner{text-align:center;font-weight:650;color:var(--navy);font-size:12px;}
-table.daily .clear-day-btn{
-  display:block;margin:3px auto 0;background:none;border:none;color:var(--ink-dim);
-  font-size:9.5px;font-weight:500;text-transform:none;padding:1px 4px;cursor:pointer;
-}
-table.daily .clear-day-btn:hover{color:var(--bad);text-decoration:underline;}
 
 /* group divider rows */
 tr.grp-divider td{
@@ -954,13 +949,22 @@ document.addEventListener('keydown', function(e){
   const erow = parseInt(el.dataset.erow, 10);
   const ecol = el.dataset.ecol;
   const dir = e.shiftKey ? -1 : 1;
-  const target = table.querySelector(`input[data-erow="${erow+dir}"][data-ecol="${ecol}"]`);
-  if(target){
-    e.preventDefault();
-    target.focus();
-    target.select();
+  const targetErow = String(erow+dir);
+  const target = table.querySelector(`input[data-erow="${targetErow}"][data-ecol="${ecol}"]`);
+  if(!target) return; // край таблицы — отдаём управление обычному поведению Tab
+  e.preventDefault();
+  target.focus();
+  target.select();
+  // Фокус на target мог синхронно вызвать onchange у ПРЕДЫДУЩЕЙ ячейки (если значение
+  // изменилось), а тот — перерисовку всей таблицы. Старый DOM-узел target при этом уже
+  // уничтожен, и фокус слетает. Проверяем и, если нужно, ищем ячейку заново в свежем DOM.
+  const stillFocused = document.activeElement && document.activeElement.dataset
+    && document.activeElement.dataset.erow===targetErow && document.activeElement.dataset.ecol===ecol;
+  if(!stillFocused){
+    const freshTable = document.querySelector('table.daily');
+    const freshTarget = freshTable && freshTable.querySelector(`input[data-erow="${targetErow}"][data-ecol="${ecol}"]`);
+    if(freshTarget){ freshTarget.focus(); freshTarget.select(); }
   }
-  // если следующей строки нет (край таблицы) — отдаём управление обычному поведению Tab
 });
 
 /* ======================= PRODUCTS ======================= */
@@ -1132,17 +1136,6 @@ function addMonth(){
   selectedMonthKey = newKey;
   populateMonthSelectors();
   renderDaily(); renderSummary();
-}
-
-function clearDay(monthKey, idx){
-  const month = ensureMonth(monthKey);
-  const day = month.days[idx];
-  if(!day) return;
-  if(!confirm(`Очистить все значения за ${fmtDate(day.date)}? Дата останется, но данные будут стёрты.`)) return;
-  month.days[idx] = newDayRow(day.date, activeSectionType());
-  save();
-  renderDaily();
-  renderSummary();
 }
 
 function deleteMonth(){
@@ -1422,7 +1415,7 @@ const IMPORT_BUILTIN_MAP = {
   'Подписка Premium': 'otherExpenses',
   'Оплата за клик': 'adSpend',
   'Продвижение с оплатой за заказ': 'adSpend',
-  'Ускоренный сбор отзывов': 'adSpend',
+  'Ускоренный сбор отзывов': 'otherExpenses',
 };
 
 const IMPORT_FIELD_OPTIONS = [
@@ -2119,7 +2112,7 @@ function buildMetricRowsWB(){
   rows.push({group:'inside', label:'Хранение', field:'storage', kind:'money'});
   rows.push({group:'inside', label:'Платная приёмка', field:'paidAcceptance', kind:'money'});
   rows.push({group:'inside', label:'Прочие расходы', field:'otherExpenses', kind:'money'});
-  rows.push({group:'inside', label:'В т.ч. реклама (справочно)', field:'adsMemo', kind:'money'});
+  rows.push({group:'inside', label:'В т.ч. реклама', field:'adsMemo', kind:'money'});
   EXTERNAL_FIELDS.forEach(([id,label])=>{
     rows.push({group:'outside', label, field:'external.'+id, kind:'money'});
   });
@@ -2213,7 +2206,7 @@ function renderDaily(){
   // header
   let head = `<thead><tr><th class="metric-col">Показатель</th>`;
   days.forEach((day,idx)=>{
-    head += `<th><div class="day-head-inner">${fmtDate(day.date)}<button class="clear-day-btn" onclick="clearDay('${key}',${idx})" title="Очистить день (дата останется)">Очистить</button></div></th>`;
+    head += `<th><div class="day-head-inner">${fmtDate(day.date)}</div></th>`;
   });
   head += `</tr></thead>`;
 
@@ -2481,6 +2474,7 @@ function renderSummaryOzon(month, t){
       ${wfStep('Маржа', t.margin, t.margin>=0?'good':'bad')}
       ${wfStep('Налог', t.tax, 'tax')}
       ${wfStep('Операционная прибыль (EBITDA)', t.ebitda, t.ebitda>=0?'good':'bad')}
+      ${wfStepPct('Маржинальность', t.marginality, (t.marginality!==null && t.marginality>=0)?'good':'bad')}
       ${wfStep('Чистая прибыль', t.netProfit, 'final')}
     </div>
 
@@ -2490,7 +2484,6 @@ function renderSummaryOzon(month, t){
       <div class="kpi"><div class="lbl">Заказано, шт</div><div class="val">${fmtQty(t.orderedQty)}</div></div>
       <div class="kpi"><div class="lbl">ДРР, % (сред.)</div><div class="val">${t.avgDrr===null?'—':fmt(t.avgDrr*100)+'%'}</div></div>
       <div class="kpi"><div class="lbl">Реклама, ₽</div><div class="val">${fmt(t.adSpend)}</div></div>
-      <div class="kpi"><div class="lbl">Маржинальность (Операционная прибыль/Продажа)</div><div class="val">${t.marginality===null?'—':fmt(t.marginality*100)+'%'}</div></div>
       <div class="kpi"><div class="lbl">Себестоимость проданного</div><div class="val">${fmt(t.cogs)}</div></div>
       <div class="kpi"><div class="lbl">Расходы вне Ozon</div><div class="val">${fmt(t.externalTotal)}</div></div>
     </div>
@@ -2541,6 +2534,7 @@ function renderSummaryWB(month, t){
       ${wfStep('Маржа', t.margin, t.margin>=0?'good':'bad')}
       ${wfStep('Налог', t.tax, 'tax')}
       ${wfStep('Операционная прибыль (EBITDA)', t.ebitda, t.ebitda>=0?'good':'bad')}
+      ${wfStepPct('Маржинальность', t.marginality, (t.marginality!==null && t.marginality>=0)?'good':'bad')}
       ${wfStep('Чистая прибыль', t.netProfit, 'final')}
     </div>
 
@@ -2550,7 +2544,6 @@ function renderSummaryWB(month, t){
       <div class="kpi"><div class="lbl">Заказано, шт</div><div class="val">${fmtQty(t.orderedQty)}</div></div>
       <div class="kpi"><div class="lbl">ДРР, % (сред.)</div><div class="val">${t.avgDrr===null?'—':fmt(t.avgDrr*100)+'%'}</div></div>
       <div class="kpi"><div class="lbl">В т.ч. реклама, ₽</div><div class="val">${fmt(t.adsMemo)}</div></div>
-      <div class="kpi"><div class="lbl">Маржинальность (Операционная прибыль/Продажа)</div><div class="val">${t.marginality===null?'—':fmt(t.marginality*100)+'%'}</div></div>
       <div class="kpi"><div class="lbl">Себестоимость проданного</div><div class="val">${fmt(t.cogs)}</div></div>
       <div class="kpi"><div class="lbl">Расходы вне ВБ</div><div class="val">${fmt(t.externalTotal)}</div></div>
     </div>
@@ -2597,6 +2590,7 @@ function renderSummaryYM(month, t){
       ${wfStep('Маржа', t.margin, t.margin>=0?'good':'bad')}
       ${wfStep('Налог', t.tax, 'tax')}
       ${wfStep('Операционная прибыль (EBITDA)', t.ebitda, t.ebitda>=0?'good':'bad')}
+      ${wfStepPct('Маржинальность', t.marginality, (t.marginality!==null && t.marginality>=0)?'good':'bad')}
       ${wfStep('Чистая прибыль', t.netProfit, 'final')}
     </div>
 
@@ -2606,7 +2600,6 @@ function renderSummaryYM(month, t){
       <div class="kpi"><div class="lbl">Заказано, шт</div><div class="val">${fmtQty(t.orderedQty)}</div></div>
       <div class="kpi"><div class="lbl">ДРР, % (сред.)</div><div class="val">${t.avgDrr===null?'—':fmt(t.avgDrr*100)+'%'}</div></div>
       <div class="kpi"><div class="lbl">Реклама, ₽</div><div class="val">${fmt(t.adSpend)}</div></div>
-      <div class="kpi"><div class="lbl">Маржинальность (Операционная прибыль/Продажа)</div><div class="val">${t.marginality===null?'—':fmt(t.marginality*100)+'%'}</div></div>
       <div class="kpi"><div class="lbl">Себестоимость проданного</div><div class="val">${fmt(t.cogs)}</div></div>
       <div class="kpi"><div class="lbl">Расходы вне ЯМ</div><div class="val">${fmt(t.externalTotal)}</div></div>
     </div>
@@ -2656,12 +2649,12 @@ function renderSummarySite(month, t){
       ${wfStep('Маржа', t.margin, t.margin>=0?'good':'bad')}
       ${wfStep('Налог', t.tax, 'tax')}
       ${wfStep('Операционная прибыль (EBITDA)', t.ebitda, t.ebitda>=0?'good':'bad')}
+      ${wfStepPct('Маржинальность', t.marginality, (t.marginality!==null && t.marginality>=0)?'good':'bad')}
       ${wfStep('Чистая прибыль', t.netProfit, 'final')}
     </div>
 
     <h3 class="subhead">Ключевые метрики</h3>
     <div class="kpi-grid">
-      <div class="kpi"><div class="lbl">Маржинальность (Операционная прибыль/Продажа)</div><div class="val">${t.marginality===null?'—':fmt(t.marginality*100)+'%'}</div></div>
       <div class="kpi"><div class="lbl">Себестоимость проданного</div><div class="val">${fmt(t.cogs)}</div></div>
       <div class="kpi"><div class="lbl">Расходы вне Сайта</div><div class="val">${fmt(t.externalTotal)}</div></div>
     </div>
@@ -2679,6 +2672,10 @@ function fmt(v){
   if(v===null || v===undefined || isNaN(v)) return '—';
   return Number(v).toLocaleString('ru-RU', {minimumFractionDigits:2, maximumFractionDigits:2});
 }
+function wfStepPct(lbl, val, cls=''){
+  return `<div class="wf-step ${cls}"><div class="lbl">${lbl}</div><div class="val">${val===null?'—':fmt(val*100)+'%'}</div></div>`;
+}
+
 function fmtQty(v){
   if(v===null || v===undefined || isNaN(v)) return '—';
   return Number(v).toLocaleString('ru-RU', {maximumFractionDigits:0});
