@@ -38,6 +38,8 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:v
 ::-webkit-scrollbar-track{background:transparent;}
 
 a{color:inherit;}
+#helpPanel .desc a{color:var(--accent);text-decoration:underline;}
+#helpPanel .desc a:hover{color:var(--navy);}
 button{font-family:var(--sans);cursor:pointer;}
 input,select{font-family:var(--sans);}
 
@@ -469,6 +471,15 @@ h3.subhead{font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:
 
     <h3 class="subhead">Показатели в «Итоги / P&amp;L»</h3>
     <p class="desc">Продажа → Доход на р/с (за вычетом расходов внутри площадки) → Маржа (минус себестоимость и самовыкупы) → Операционная прибыль, EBITDA (минус налог) → Чистая прибыль (минус расходы за пределами площадки: фулфилмент, ФОТ, аренда и т.п.).</p>
+
+    <h3 class="subhead">Архив за прошлые периоды</h3>
+    <p class="desc">Данные до перехода на этот дашборд — в Google-таблицах, по разделам:</p>
+    <p class="desc">
+      <a href="https://docs.google.com/spreadsheets/d/15VP5LdID6XNWVaYR-PyFowpeB8VMjBvoiOP_Ot64c3k/edit?usp=sharing" target="_blank" rel="noopener">Ozon SEKAI</a><br>
+      <a href="https://docs.google.com/spreadsheets/d/1hsZpNbrxx_RJkEW27cMoWf1pU-Fh59ealLL8IV-Vzqs/edit?usp=sharing" target="_blank" rel="noopener">WB SEKAI</a><br>
+      <a href="https://docs.google.com/spreadsheets/d/1-Az3EE_oJ2mUE0tWyxYSMFc8LVs2l_YaE-ok8etfmqQ/edit?usp=sharing" target="_blank" rel="noopener">Яндекс.Маркет SEKAI</a><br>
+      <a href="https://docs.google.com/spreadsheets/d/1R4tk4aM9hwyE5a2xexEsaVc4vJfbQFd6UyumL5QCO_I/edit?usp=sharing" target="_blank" rel="noopener">Сайт</a>
+    </p>
 
     <h3 class="subhead">Кто вносит данные</h3>
     <p class="desc">Вход по логину и паролю сотрудника — те же учётные данные, что и в «Воронке продаж». Новых сотрудников заводит администратор вручную в Firebase Console (Authentication → Users) — самостоятельная регистрация недоступна.</p>
