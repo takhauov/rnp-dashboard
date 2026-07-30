@@ -636,8 +636,10 @@ const SECTIONS_USING_PRODUCTS = ['ozon_sekai','ozon_meld','wb_sekai','site'];
 // для него заполнен артикул этой площадки — а для "Сайта" (там нет автоматического импорта
 // и общего понятия артикула) используется отдельная галочка "включить в Сайт".
 function productsForSection(sectionId){
-  if(sectionId==='site') return sharedProducts.filter(p=>p.includeInSite);
-  return sharedProducts.filter(p=>(p.articles||{})[sectionId]);
+  const filtered = sectionId==='site'
+    ? sharedProducts.filter(p=>p.includeInSite)
+    : sharedProducts.filter(p=>(p.articles||{})[sectionId]);
+  return filtered.slice().sort((a,b)=>a.name.localeCompare(b.name, 'ru'));
 }
 
 function defaultSharedProduct(name, cost){
@@ -995,7 +997,8 @@ function renderProducts(){
     return;
   }
   const today = todayStr();
-  list.innerHTML = sharedProducts.map(p=>{
+  const sortedProducts = sharedProducts.slice().sort((a,b)=>a.name.localeCompare(b.name, 'ru'));
+  list.innerHTML = sortedProducts.map(p=>{
     const hist = (p.costHistory||[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
     const currentEntry = hist.filter(h=>h.date<=today).slice(-1)[0] || hist[0];
     const isOpen = openProductEdit===p.id;
