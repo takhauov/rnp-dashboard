@@ -273,6 +273,8 @@ tr.grp-divider.grp-inside td{background:var(--c-inside);border-left:4px solid va
 tr.grp-divider.grp-outside td{background:var(--c-outside);border-left:4px solid var(--b-outside);}
 tr.grp-divider.grp-selfbuy td{background:var(--c-selfbuy);border-left:4px solid var(--b-selfbuy);}
 tr.grp-divider.grp-result td{background:var(--c-result);border-left:4px solid var(--b-result);}
+tr.grp-divider .grp-toggle-arrow{float:right;font-size:10px;color:var(--ink-dim);}
+tr.hidden-row{display:none;}
 
 tr.row-orders td.metric-label{background:var(--c-orders);}
 tr.row-sales td.metric-label{background:var(--c-sales);}
@@ -354,6 +356,7 @@ h3.subhead{font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:
     </div>
   </div>
   <div id="userBar" style="display:none;align-items:center;gap:10px;font-size:12.5px;color:#c7cde0;">
+    <button id="refreshBtn" onclick="refreshCurrentView()" title="Подтянуть свежие данные из базы — на случай, если коллега что-то изменил, пока вкладка уже была открыта" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;padding:6px 12px;border-radius:7px;font-size:12px;cursor:pointer;">⟳ Обновить</button>
     <span id="userEmailLabel"></span>
     <button id="logoutBtn" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;padding:6px 12px;border-radius:7px;font-size:12px;cursor:pointer;">Выйти</button>
   </div>
@@ -605,6 +608,7 @@ const SECTIONS_CONFIG = [
   {id:'ozon_sekai', label:'OZON SEKAI', type:'ozon'},
   {id:'ozon_meld',  label:'OZON MELD',  type:'ozon'},
   {id:'wb_sekai',   label:'WB SEKAI',   type:'wb'},
+  {id:'wb_meld',    label:'WB MELD',    type:'wb'},
   {id:'ym_sekai',   label:'ЯМ SEKAI',   type:'ym'},
   {id:'ym_meld',    label:'ЯМ MELD',    type:'ym'},
   {id:'site',       label:'Сайт',       type:'site'},
@@ -628,9 +632,10 @@ const PRODUCT_ARTICLE_SECTIONS = [
   {id:'ozon_sekai', label:'SKU (Ozon SEKAI)'},
   {id:'ozon_meld',  label:'SKU (Ozon MELD)'},
   {id:'wb_sekai',   label:'Артикул WB (WB SEKAI)'},
+  {id:'wb_meld',    label:'Артикул WB (WB MELD)'},
 ];
 // Разделы, которые используют общий каталог товаров (для расчёта себестоимости по количеству).
-const SECTIONS_USING_PRODUCTS = ['ozon_sekai','ozon_meld','wb_sekai','site'];
+const SECTIONS_USING_PRODUCTS = ['ozon_sekai','ozon_meld','wb_sekai','wb_meld','site'];
 
 // Товар попадает в конкретный раздел (и участвует там в расчёте себестоимости), только если
 // для него заполнен артикул этой площадки — а для "Сайта" (там нет автоматического импорта
@@ -770,23 +775,67 @@ function showView(mode){
   document.getElementById('mainWrap').style.display = mode==='section' ? '' : 'none';
   document.getElementById('productsToggleBtn').classList.toggle('active', mode==='products');
   document.getElementById('helpToggleBtn').classList.toggle('active', mode==='help');
-  if(mode==='products'){ renderProducts(); }
 }
-function toggleProducts(){
-  showView(document.getElementById('productsPanel').style.display==='block' ? 'section' : 'products');
+
+// Загружает заново с сервера один конкретный раздел (по умолчанию — активный) и общий
+// каталог товаров, заменяя локальную копию в памяти. Нужно, потому что данные читаются
+// из базы только один раз при входе — если коллега внёс изменения, пока вкладка уже
+// была открыта, без этого их не будет видно без полной перезагрузки страницы.
+async function refreshSectionData(id){
+  const sectionId = id || rootState.activeSectionId;
+  let data = await storeGet(sectionStoreKey(sectionId));
+  if(!data) data = defaultSectionState();
+  migrateSectionData(data, getSectionConfig(sectionId).type);
+  rootState.sections[sectionId] = data;
+  if(sectionId===rootState.activeSectionId) state = data;
+  await loadSharedProducts();
+}
+
+let isRefreshing = false;
+async function refreshCurrentView(){
+  if(isRefreshing) return;
+  isRefreshing = true;
+  const btn = document.getElementById('refreshBtn');
+  const original = btn ? btn.textContent : null;
+  if(btn){ btn.disabled = true; btn.textContent = 'Обновляю…'; }
+  try{
+    await refreshSectionData(rootState.activeSectionId);
+    selectedMonthKey = null; // на случай, если коллега добавил/удалил месяц
+    populateMonthSelectors();
+    renderTaxBox();
+    renderDaily();
+    renderSummary();
+    if(document.getElementById('productsPanel').style.display==='block') renderProducts();
+  } finally {
+    isRefreshing = false;
+    if(btn){ btn.disabled = false; btn.textContent = original; }
+  }
+}
+
+async function toggleProducts(){
+  const opening = document.getElementById('productsPanel').style.display !== 'block';
+  if(opening){
+    await loadSharedProducts(); // подтягиваем актуальный каталог перед показом
+    renderProducts();
+  }
+  showView(opening ? 'products' : 'section');
 }
 function toggleHelp(){
   showView(document.getElementById('helpPanel').style.display==='block' ? 'section' : 'help');
 }
 
-function switchSection(id){
+async function switchSection(id){
   if(rootState.sections[id] && id!==rootState.activeSectionId){
     rootState.activeSectionId = id;
-    state = rootState.sections[id];
     selectedMonthKey = null;      // у нового раздела свои месяцы — пересчитаем дефолт (текущий месяц)
     pendingImportRows = null; pendingUnknownTypes = [];
     try{ localStorage.setItem(LAST_SECTION_KEY, id); }catch(e){}
+    showView('section'); // сразу показываем раздел (со старыми данными), чтобы не было пустого экрана
+    await refreshSectionData(id); // и тут же подтягиваем актуальные данные из базы
+    populateMonthSelectors();
+    renderTaxBox();
     renderDaily(); renderSummary();
+    return;
   }
   showView('section');
 }
@@ -952,7 +1001,7 @@ document.addEventListener('blur', function(e){
 
 // Tab/Shift+Tab внутри таблицы ежедневных данных переходит на следующую ячейку ПО ВЕРТИКАЛИ
 // (тот же день, следующий показатель), а не по горизонтали, как по умолчанию в браузере —
-// так удобнее заполнять один день сверху вниз подряд.
+// так удобнее заполнять один день сверху вниз подряд. Скрытые (свёрнутые) строки пропускаются.
 document.addEventListener('keydown', function(e){
   if(e.key !== 'Tab') return;
   const el = e.target;
@@ -962,20 +1011,31 @@ document.addEventListener('keydown', function(e){
   const erow = parseInt(el.dataset.erow, 10);
   const ecol = el.dataset.ecol;
   const dir = e.shiftKey ? -1 : 1;
-  const targetErow = String(erow+dir);
-  const target = table.querySelector(`input[data-erow="${targetErow}"][data-ecol="${ecol}"]`);
-  if(!target) return; // край таблицы — отдаём управление обычному поведению Tab
+
+  let targetErow = erow;
+  let target = null;
+  for(let i=0; i<200; i++){ // защита от бесконечного цикла
+    targetErow += dir;
+    const candidate = table.querySelector(`input[data-erow="${targetErow}"][data-ecol="${ecol}"]`);
+    if(!candidate) break; // дошли до края таблицы
+    const row = candidate.closest('tr');
+    if(row && row.classList.contains('hidden-row')) continue; // строка свёрнута — пропускаем
+    target = candidate;
+    break;
+  }
+  if(!target) return; // край таблицы (или все дальнейшие строки скрыты) — обычное поведение Tab
   e.preventDefault();
   target.focus();
   target.select();
+  const finalErow = String(targetErow);
   // Фокус на target мог синхронно вызвать onchange у ПРЕДЫДУЩЕЙ ячейки (если значение
   // изменилось), а тот — перерисовку всей таблицы. Старый DOM-узел target при этом уже
   // уничтожен, и фокус слетает. Проверяем и, если нужно, ищем ячейку заново в свежем DOM.
   const stillFocused = document.activeElement && document.activeElement.dataset
-    && document.activeElement.dataset.erow===targetErow && document.activeElement.dataset.ecol===ecol;
+    && document.activeElement.dataset.erow===finalErow && document.activeElement.dataset.ecol===ecol;
   if(!stillFocused){
     const freshTable = document.querySelector('table.daily');
-    const freshTarget = freshTable && freshTable.querySelector(`input[data-erow="${targetErow}"][data-ecol="${ecol}"]`);
+    const freshTarget = freshTable && freshTable.querySelector(`input[data-erow="${finalErow}"][data-ecol="${ecol}"]`);
     if(freshTarget){ freshTarget.focus(); freshTarget.select(); }
   }
 });
@@ -983,6 +1043,15 @@ document.addEventListener('keydown', function(e){
 /* ======================= PRODUCTS ======================= */
 let openProductEdit = null;
 let openArticleCards = new Set(); // id товаров, у которых блок артикулов сейчас развёрнут (по умолчанию свёрнут)
+
+// Свёрнутые группы строк в таблице ежедневных данных (сейчас — только "Товары", т.к. список
+// может быть длинным). Общее для всех разделов, где встречается такая группа — Ozon/WB/Сайт.
+let collapsedTableGroups = new Set();
+function toggleTableGroup(groupId){
+  if(collapsedTableGroups.has(groupId)) collapsedTableGroups.delete(groupId);
+  else collapsedTableGroups.add(groupId);
+  renderDaily();
+}
 
 function toggleArticles(id){
   if(openArticleCards.has(id)) openArticleCards.delete(id);
@@ -1261,7 +1330,7 @@ function calcDayWB(day){
   const commission = salesRub - boughtNetRub;
 
   let cogs = 0;
-  productsForSection('wb_sekai').forEach(p=>{
+  productsForSection(rootState.activeSectionId).forEach(p=>{
     const qty = num(day.salesQty[p.id]);
     cogs += qty * getProductCostAt(p, day.date);
   });
@@ -1981,7 +2050,7 @@ function aggregateWBRedemptions(rows){
 
 function applyWBRedemptions(date, qtyByArticle){
   const productByArticle = {};
-  sharedProducts.forEach(p=>{ const a=(p.articles||{}).wb_sekai; if(a) productByArticle[String(a).trim()] = p; });
+  sharedProducts.forEach(p=>{ const a=(p.articles||{})[rootState.activeSectionId]; if(a) productByArticle[String(a).trim()] = p; });
 
   const monthKey = date.slice(0,7);
   const month = ensureMonth(monthKey);
@@ -2115,7 +2184,7 @@ function buildMetricRowsWB(){
   rows.push({group:'orders', label:'Заказано до СПП, ₽', field:'orderedRub', kind:'money'});
   rows.push({group:'orders', label:'Заказано, шт', field:'orderedQty', kind:'qty'});
   rows.push({group:'sales', label:'Продажа, ₽', field:'salesRub', kind:'money'});
-  productsForSection('wb_sekai').forEach(p=>{
+  productsForSection(rootState.activeSectionId).forEach(p=>{
     rows.push({group:'products', label:p.name, field:'salesQty.'+p.id, kind:'qty'});
   });
   rows.push({group:'inside', label:'Выкуплено (за вычетом СПП и комиссии)', field:'boughtNetRub', kind:'money'});
@@ -2229,12 +2298,19 @@ function renderDaily(){
   let prevGroup = null;
   let editableRowIdx = 0;
   const groupMeta = getGroupMeta();
+  // Группы, где список строк можно свернуть/развернуть (длинный список товаров и т.п.).
+  const collapsibleGroupIds = ['products'];
   metricRows.forEach(r=>{
     if(r.group!==prevGroup){
-      body += `<tr class="grp-divider grp-${r.group} row-${r.group}"><td class="metric-label" colspan="${days.length+1}">${groupMeta[r.group].label}</td></tr>`;
+      const collapsible = collapsibleGroupIds.includes(r.group);
+      const isCollapsed = collapsedTableGroups.has(r.group);
+      const arrow = collapsible ? `<span class="grp-toggle-arrow">${isCollapsed?'▸':'▾'}</span>` : '';
+      const clickAttr = collapsible ? ` onclick="toggleTableGroup('${r.group}')" style="cursor:pointer;"` : '';
+      body += `<tr class="grp-divider grp-${r.group} row-${r.group}"${clickAttr}><td class="metric-label" colspan="${days.length+1}">${groupMeta[r.group].label}${arrow}</td></tr>`;
       prevGroup = r.group;
     }
-    body += `<tr class="row-${r.group}"><td class="metric-label">${escapeHtml(r.label)}</td>`;
+    const isCollapsedRow = collapsibleGroupIds.includes(r.group) && collapsedTableGroups.has(r.group);
+    body += `<tr class="row-${r.group} grp-content${isCollapsedRow?' hidden-row':''}"><td class="metric-label">${escapeHtml(r.label)}</td>`;
     if(r.computed){
       days.forEach((day,idx)=>{
         const val = calcs[idx][r.key];
@@ -2339,7 +2415,7 @@ function computeMonthTotalsWB(key){
   const drrList=[];
   const salesByProduct = {};
   const externalByField = Object.fromEntries(EXTERNAL_FIELDS.map(f=>[f[0],0]));
-  productsForSection('wb_sekai').forEach(p=>salesByProduct[p.id]=0);
+  productsForSection(rootState.activeSectionId).forEach(p=>salesByProduct[p.id]=0);
 
   month.days.forEach(day=>{
     const c = calcDay(day);
@@ -2365,7 +2441,7 @@ function computeMonthTotalsWB(key){
     totals.ebitda += c.ebitda;
     totals.netProfit += c.netProfit;
     if(c.drr!==null) drrList.push(c.drr);
-    productsForSection('wb_sekai').forEach(p=>{ salesByProduct[p.id]+= num(day.salesQty[p.id]); });
+    productsForSection(rootState.activeSectionId).forEach(p=>{ salesByProduct[p.id]+= num(day.salesQty[p.id]); });
     EXTERNAL_FIELDS.forEach(([id])=>{ externalByField[id] += num((day.external||{})[id]); });
   });
 
@@ -2531,7 +2607,7 @@ function renderSummaryWB(month, t){
   const wfStep = (lbl,val,cls='')=>`
     <div class="wf-step ${cls}"><div class="lbl">${lbl}</div><div class="val">${fmt(val)} ₽</div></div>`;
 
-  const productRows = productsForSection('wb_sekai').map(p=>{
+  const productRows = productsForSection(rootState.activeSectionId).map(p=>{
     const qty = t.salesByProduct[p.id]||0;
     return `<div class="kpi"><div class="lbl">${escapeHtml(p.name)}</div><div class="val">${fmtQty(qty)} шт · ${fmt(qty*getCurrentProductCost(p))} ₽</div></div>`;
   }).join('');
@@ -2562,7 +2638,7 @@ function renderSummaryWB(month, t){
       <div class="kpi"><div class="lbl">Расходы вне ВБ</div><div class="val">${fmt(t.externalTotal)}</div></div>
     </div>
 
-    ${productsForSection('wb_sekai').length? `<h3 class="subhead">Выкуплено по товарам</h3><div class="kpi-grid">${productRows}</div>` : ''}
+    ${productsForSection(rootState.activeSectionId).length? `<h3 class="subhead">Выкуплено по товарам</h3><div class="kpi-grid">${productRows}</div>` : ''}
 
     <h3 class="subhead">Расходы внутри ВБ за месяц</h3>
     <div class="kpi-grid">
