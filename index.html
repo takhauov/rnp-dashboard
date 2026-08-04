@@ -753,11 +753,24 @@ function migrateSectionData(data, sectionType){
 
 // Сохраняет данные ОДНОГО раздела (по умолчанию — активного). Не блокирует UI: вызывается
 // без await, обновление на экране уже произошло по локальным данным, запись в фоне.
-async function save(sectionId){
+// Очередь сохранений по разделам: раньше save() запускал запись в базу параллельно при
+// каждом изменении ячейки, и если сотрудник быстро проходил по нескольким полям (Tab,
+// Tab, Tab...), несколько запросов на запись летели в базу одновременно. Если они долетали
+// не в том порядке, в котором отправлялись, более старая (неполная) версия дня могла
+// "выиграть" и переписать более новую — часть данных пропадала. Теперь каждая запись для
+// раздела дожидается завершения предыдущей, поэтому финальным в базе всегда оказывается
+// самое последнее фактическое изменение, без гонки.
+const saveQueues = {};
+function save(sectionId){
   const id = sectionId || rootState.activeSectionId;
-  const ok = await storeSet(sectionStoreKey(id), rootState.sections[id]);
-  if(!ok) showFbError('Не удалось сохранить изменения — проверьте интернет-соединение. Последнее изменение могло не сохраниться.');
-  else hideFbError();
+  const prev = saveQueues[id] || Promise.resolve();
+  const next = prev.then(async ()=>{
+    const ok = await storeSet(sectionStoreKey(id), rootState.sections[id]);
+    if(!ok) showFbError('Не удалось сохранить изменения — проверьте интернет-соединение. Последнее изменение могло не сохраниться.');
+    else hideFbError();
+  }).catch(e=>{ console.error('ошибка в очереди сохранения', id, e); });
+  saveQueues[id] = next;
+  return next;
 }
 
 // Переключение активного раздела дашборда (OZON SEKAI / OZON MELD / ...).
@@ -783,6 +796,10 @@ function showView(mode){
 // была открыта, без этого их не будет видно без полной перезагрузки страницы.
 async function refreshSectionData(id){
   const sectionId = id || rootState.activeSectionId;
+  // Дожидаемся, чтобы уже поставленные в очередь изменения по этому разделу сначала
+  // долетели до базы — иначе можно перечитать более старую версию и локально "потерять"
+  // ещё не отправленные правки.
+  if(saveQueues[sectionId]) await saveQueues[sectionId];
   let data = await storeGet(sectionStoreKey(sectionId));
   if(!data) data = defaultSectionState();
   migrateSectionData(data, getSectionConfig(sectionId).type);
