@@ -367,6 +367,7 @@ h3.subhead{font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:
   <div class="section-bar" id="sectionBar"></div>
   <div style="display:flex;gap:8px;">
     <button class="section-btn type-catalog" id="productsToggleBtn" onclick="toggleProducts()">Товары</button>
+    <button class="section-btn type-catalog" id="ddsToggleBtn" onclick="toggleDds()">Расходы вне МП</button>
     <button class="section-btn type-help" id="helpToggleBtn" onclick="toggleHelp()">Справка</button>
   </div>
 </div>
@@ -449,6 +450,25 @@ h3.subhead{font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:
   </div>
 </div>
 
+<div class="wrap" id="ddsPanel" style="display:none;">
+  <div class="panel">
+    <h2>Расходы вне МП — импорт из ДДС</h2>
+    <p class="desc">Импорт ДДС — расходы разносятся сразу по всем разделам, в группу «Вне площадки».
+      Строки, помеченные «Переносим в РНП? — Нет», в импорт не попадают. Если в файле встретится
+      статья или направление, для которых ещё нет правила — дашборд один раз спросит, куда их
+      отнести, и запомнит выбор навсегда.</p>
+    <div class="import-box" id="importBoxDds">
+      <div class="import-title">Импорт из выгрузки ДДС (.xlsx)</div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <input type="file" id="importFileInputDds" accept=".xlsx">
+        <button class="save-btn" id="importBtnDds" onclick="handleDdsImportFile()">Импортировать</button>
+      </div>
+      <div id="ddsImportReport"></div>
+    </div>
+    <div id="ddsKnownMappings"></div>
+  </div>
+</div>
+
 <div class="wrap" id="helpPanel" style="display:none;">
   <div class="panel">
     <h2>Справка</h2>
@@ -471,6 +491,23 @@ h3.subhead{font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:
 
     <h3 class="subhead">Импорт (WB)</h3>
     <p class="desc">Загружается отчёт WB «Продажи».<br>Путь к файлу: Аналитика → Отчёты → Продажи, период 1 день.<br>Из файла берётся только «Выкупили, шт.» по каждому артикулу (суммируется по всем складам), дата — из заголовка файла. Товары сопоставляются по полю «Артикул WB» в карточке товара. Отчёт должен быть за один день — за более длинный период построчных дат нет, импорт не сработает.</p>
+
+    <h3 class="subhead">Импорт расходов вне МП (ДДС)</h3>
+    <p class="desc">Кнопка «Расходы вне МП» на уровне дашборда (рядом с «Товары») — один файл выгрузки ДДС
+      разносит расходы группы «Вне площадки» (ФОТ, внешняя логистика, сервисы/ПО и т.п.) сразу по всем
+      разделам, без ручного ввода по каждому разделу отдельно.<br>
+      Берутся только строки-расходы с заполненным направлением и без пометки «Переносим в РНП? — нет»
+      (строки с выручкой, закупкой товара и налогом УСН исключены — они уже учитываются другими
+      механизмами дашборда). Статья расхода определяет поле («ФОТ», «Внешняя логистика» и т.д.),
+      направление — раздел (вб/озон/ям/сайт → конкретный WB/Ozon/ЯМ SEKAI или MELD, сайт).<br>
+      Если статья или направление ещё не встречались — дашборд один раз спросит, куда их отнести, и
+      запомнит выбор навсегда (сопоставления общие на весь дашборд, не по разделам). Из встроенных
+      допущений: «Кредиты» (тело кредита) относится к «Прочие», «социальные налоги» — к «Налоги с ФОТ»
+      — если это не так, поправить можно вручную (значение всё равно попадёт в раздел как конфликт с
+      уже введённым, если там что-то было, либо примените и потом скорректируйте нужный день руками).<br>
+      Если в конкретный день на конкретном поле уже есть ненулевое значение (ручной ввод или прошлый
+      импорт) — дашборд не перезаписывает его молча, а показывает как конфликт и даёт выбрать: оставить
+      старое или заменить суммой из файла.</p>
 
     <h3 class="subhead">Показатели в «Итоги / P&amp;L»</h3>
     <p class="desc">Продажа → Доход на р/с (за вычетом расходов внутри площадки) → Маржа (минус себестоимость и самовыкупы) → Операционная прибыль, EBITDA (минус налог) → Чистая прибыль (минус расходы за пределами площадки: фулфилмент, ФОТ, аренда и т.п.).</p>
@@ -555,20 +592,20 @@ async function storeGet(key){
 }
 async function storeSet(key, val){
   if(!USE_FIREBASE){
-    for(let attempt=0; attempt<2; attempt++){
+    for(let attempt=0; attempt<3; attempt++){
       try{ const r = await window.storage.set(key, JSON.stringify(val), false); if(r) return true; }
       catch(e){ console.error('storage set failed', key, e); }
-      if(attempt===0) await new Promise(res=>setTimeout(res,600));
+      if(attempt<2) await new Promise(res=>setTimeout(res, 600*(attempt+1)));
     }
     return false;
   }
-  for(let attempt=0; attempt<2; attempt++){
+  for(let attempt=0; attempt<3; attempt++){
     try{
       const db = await initFirebase();
       await db.collection(FIRESTORE_COLLECTION).doc(key).set({v: JSON.stringify(val)});
       return true;
     }catch(e){ console.error('storage set failed', key, e); }
-    if(attempt===0) await new Promise(res=>setTimeout(res,600));
+    if(attempt<2) await new Promise(res=>setTimeout(res, 600*(attempt+1)));
   }
   return false;
 }
@@ -601,6 +638,67 @@ function defaultSectionState(){
     customTypeMap: {}, // "Тип начисления" из выгрузки Ozon -> целевое поле (запоминается один раз)
     months: {}   // key "YYYY-MM" -> { days:[...] }
   };
+}
+
+/* ==================== ИМПОРТ РАСХОДОВ ВНЕ МП ИЗ ФАЙЛА ДДС ====================
+   Один файл ДДС (общий, не по разделам) разносит расходы группы "Вне площадки"
+   сразу по всем разделам дашборда — по строкам с направлением (вб/озон/ям/сайт и т.п.)
+   и статьёй (ФОТ/логистика/сервисы и т.д.). Сопоставления статья->поле и
+   направление->раздел хранятся в общем документе Firestore (shared:dds_import_map),
+   а не по разделам — они одни на всю компанию. Встроенные значения ниже — стартовая
+   точка, дальше пополняется через ddsImportMap так же, как customTypeMap у Ozon:
+   дашборд один раз спрашивает про незнакомое значение и запоминает выбор навсегда. */
+const DDS_STATYA_BUILTIN_MAP = {
+  'ФОТ': 'fot',
+  'Внешняя логистика': 'extLogistics',
+  'Сервисы; Программное обеспечение': 'services',
+  '% по кредитам': 'loanInterest',
+  'социальные налоги': 'payrollTax',
+  'Кредиты': 'other',   // тело кредита — не расход P&L, но по решению относим к "Прочие"
+  'Прочие': 'other',
+};
+const DDS_DIRECTION_BUILTIN_MAP = {
+  'озон': 'ozon_sekai',
+  'вб': 'wb_sekai',
+  'вб тарасов': 'wb_meld',
+  'ям': 'ym_sekai',
+  'сайт': 'site',
+  // 'озон meld' и 'ям meld' пока не встречаются в файле ДДС — появятся, дашборд спросит.
+};
+const DDS_FIELD_OPTIONS = [...EXTERNAL_FIELDS, ['ignore','Не переносить в РНП']];
+function ddsFieldLabel(field){
+  const found = DDS_FIELD_OPTIONS.find(([v])=>v===field);
+  return found ? found[1] : field;
+}
+function ddsSectionOptions(){ return [...SECTIONS_CONFIG.map(s=>[s.id,s.label]), ['ignore','Не относится к дашборду']]; }
+function ddsSectionLabel(id){
+  const found = SECTIONS_CONFIG.find(s=>s.id===id);
+  if(found) return found.label;
+  if(id==='ignore') return 'Не относится к дашборду';
+  return id;
+}
+
+let ddsImportMap = {statyaMap:{}, directionMap:{}};
+async function loadDdsImportMap(){
+  const data = await storeGet('shared:dds_import_map');
+  ddsImportMap = (data && typeof data==='object')
+    ? {statyaMap: data.statyaMap||{}, directionMap: data.directionMap||{}}
+    : {statyaMap:{}, directionMap:{}};
+}
+async function saveDdsImportMap(){
+  const ok = await storeSet('shared:dds_import_map', ddsImportMap);
+  if(!ok) showFbError('Не удалось сохранить сопоставления ДДС — проверьте интернет-соединение.');
+  else hideFbError();
+}
+function resolveDdsStatya(raw){
+  if(DDS_STATYA_BUILTIN_MAP[raw]!==undefined) return DDS_STATYA_BUILTIN_MAP[raw];
+  if(ddsImportMap.statyaMap[raw]!==undefined) return ddsImportMap.statyaMap[raw];
+  return null; // неизвестна — нужно спросить
+}
+function resolveDdsDirection(raw){
+  if(DDS_DIRECTION_BUILTIN_MAP[raw]!==undefined) return DDS_DIRECTION_BUILTIN_MAP[raw];
+  if(ddsImportMap.directionMap[raw]!==undefined) return ddsImportMap.directionMap[raw];
+  return null; // неизвестно — нужно спросить
 }
 
 // Конфигурация разделов дашборда.
@@ -783,10 +881,12 @@ function showView(mode){
     document.querySelectorAll('#sectionBar .section-btn').forEach(b=>b.classList.remove('active'));
   }
   document.getElementById('productsPanel').style.display = mode==='products' ? 'block' : 'none';
+  document.getElementById('ddsPanel').style.display = mode==='dds' ? 'block' : 'none';
   document.getElementById('helpPanel').style.display = mode==='help' ? 'block' : 'none';
   document.getElementById('tabsBar').style.display = mode==='section' ? '' : 'none';
   document.getElementById('mainWrap').style.display = mode==='section' ? '' : 'none';
   document.getElementById('productsToggleBtn').classList.toggle('active', mode==='products');
+  document.getElementById('ddsToggleBtn').classList.toggle('active', mode==='dds');
   document.getElementById('helpToggleBtn').classList.toggle('active', mode==='help');
 }
 
@@ -806,6 +906,7 @@ async function refreshSectionData(id){
   rootState.sections[sectionId] = data;
   if(sectionId===rootState.activeSectionId) state = data;
   await loadSharedProducts();
+  await loadDdsImportMap();
 }
 
 let isRefreshing = false;
@@ -839,6 +940,15 @@ async function toggleProducts(){
 }
 function toggleHelp(){
   showView(document.getElementById('helpPanel').style.display==='block' ? 'section' : 'help');
+}
+
+async function toggleDds(){
+  const opening = document.getElementById('ddsPanel').style.display !== 'block';
+  if(opening){
+    await loadDdsImportMap(); // подтягиваем актуальные сопоставления перед показом
+    renderDdsKnownMappings();
+  }
+  showView(opening ? 'dds' : 'section');
 }
 
 async function switchSection(id){
@@ -2146,6 +2256,377 @@ function handleImportFileWB(){
 }
 
 
+/* ======================= DDS IMPORT (расходы вне МП, все разделы разом) ======================= */
+// Ожидаемые столбцы файла ДДС — заголовки в файле идут с переносами строк и уточнениями
+// в скобках, поэтому ищем колонку по началу нормализованного текста, а не по точному совпадению.
+const DDS_HEADER_PREFIXES = {
+  date: 'Дата',
+  income: 'Приход',
+  expense: 'Расход',
+  statya: 'Статья',
+  direction: 'Направление',
+  toRnp: 'Переносим в РНП',
+};
+
+function findDdsHeaderRow(rows){
+  const limit = Math.min(rows.length, 10);
+  for(let i=0; i<limit; i++){
+    const row = rows[i];
+    if(!row) continue;
+    const norm = row.map(normalizeHeaderText);
+    const idx = {};
+    let ok = true;
+    for(const [key, prefix] of Object.entries(DDS_HEADER_PREFIXES)){
+      const found = norm.findIndex(c => c.startsWith(prefix));
+      if(found===-1){
+        if(key==='toRnp'){ idx[key] = -1; continue; } // необязательная колонка
+        ok = false; break;
+      }
+      idx[key] = found;
+    }
+    if(ok) return {rowIndex:i, idx};
+  }
+  return null;
+}
+
+// Разбирает лист ДДС в плоский список расходных строк: {dateStr, statyaRaw, directionRaw, amount}.
+// Строки с приходом, с пустой суммой расхода и строки с "Переносим в РНП? — нет"
+// (выручка, закупка товара, налог УСН и т.п. — уже учтены другими механизмами) отбрасываются.
+function parseDdsRows(rows){
+  const header = findDdsHeaderRow(rows);
+  if(!header){
+    const preview = rows.slice(0,5).map((r,i)=>{
+      const cells = (r||[]).slice(0,6).map(c=>c===null||c===undefined?'':String(c));
+      return `Строка ${i+1}: ${cells.join(' | ')}`;
+    }).join('\n');
+    throw new Error('В файле не найдены ожидаемые столбцы (Дата, Приход, Расход, Статья, Направление). Начало файла:\n'+preview);
+  }
+  const {rowIndex, idx} = header;
+  const entries = [];
+  for(let r=rowIndex+1; r<rows.length; r++){
+    const row = rows[r];
+    if(!row || row.length===0) continue;
+    const dateVal = row[idx.date];
+    if(dateVal===null || dateVal===undefined || dateVal==='') continue;
+    const dateStr = xlsxDateToStr(dateVal);
+    if(!dateStr) continue;
+
+    const incomeVal = num(row[idx.income]);
+    const expenseVal = num(row[idx.expense]);
+    if(incomeVal>0) continue;   // это приход, а не расход
+    if(expenseVal<=0) continue; // нет суммы расхода
+
+    if(idx.toRnp!==-1){
+      const flag = normalizeHeaderText(row[idx.toRnp]).toLowerCase();
+      if(flag==='нет') continue;
+    }
+
+    const statyaRaw = normalizeHeaderText(row[idx.statya]);
+    const directionRaw = normalizeHeaderText(row[idx.direction]);
+    if(!statyaRaw && !directionRaw) continue;
+
+    entries.push({
+      dateStr,
+      statyaRaw: statyaRaw || '(без статьи)',
+      directionRaw: directionRaw || '(без направления)',
+      amount: round2(expenseVal),
+    });
+  }
+  if(entries.length===0){
+    throw new Error('В файле не найдено ни одной подходящей строки расхода (с направлением и без пометки «Переносим в РНП? — нет»).');
+  }
+  return entries;
+}
+
+let pendingDdsEntries = null;
+let pendingDdsUnknownStatya = [];
+let pendingDdsUnknownDirection = [];
+let pendingDdsConflicts = null;
+
+function renderDdsReport(html){
+  const el = document.getElementById('ddsImportReport');
+  if(el) el.innerHTML = html;
+}
+
+// Возвращает (создавая при необходимости) день конкретного раздела — раздел может отличаться
+// от активного, потому что один файл ДДС пишет сразу в несколько разделов.
+function getOrCreateDdsDay(sectionId, dateStr){
+  const sectionData = rootState.sections[sectionId];
+  const cfg = getSectionConfig(sectionId);
+  const monthKey = dateStr.slice(0,7);
+  const month = ensureMonth(monthKey, sectionData, cfg.type);
+  let day = month.days.find(d=>d.date===dateStr);
+  if(!day){
+    day = newDayRow(dateStr, cfg.type);
+    month.days.push(day);
+    month.days.sort((a,b)=>a.date.localeCompare(b.date));
+  }
+  if(!day.external) day.external = Object.fromEntries(EXTERNAL_FIELDS.map(f=>[f[0],0]));
+  return day;
+}
+
+function runDdsResolution(entries){
+  pendingDdsEntries = entries;
+  const unknownStatya = new Set();
+  const unknownDirection = new Set();
+  entries.forEach(e=>{
+    if(resolveDdsStatya(e.statyaRaw)===null) unknownStatya.add(e.statyaRaw);
+    if(resolveDdsDirection(e.directionRaw)===null) unknownDirection.add(e.directionRaw);
+  });
+  if(unknownStatya.size>0 || unknownDirection.size>0){
+    renderDdsUnknownResolver([...unknownStatya], [...unknownDirection]);
+    return;
+  }
+  proceedDdsAggregation(entries);
+}
+
+function renderDdsUnknownResolver(unknownStatya, unknownDirection){
+  pendingDdsUnknownStatya = unknownStatya;
+  pendingDdsUnknownDirection = unknownDirection;
+  let html = `<div class="import-warn"><div style="font-weight:650;margin-bottom:8px;">
+    В файле есть статьи и/или направления, для которых ещё нет правила. Укажите, куда каждое
+    относить — запомню на будущее, второй раз спрашивать не буду:</div>`;
+  if(unknownStatya.length){
+    html += `<div style="font-weight:600;margin:10px 0 4px;">Статьи → поле «Вне площадки»:</div>`;
+    html += unknownStatya.map((t,i)=>`
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+        <span style="min-width:280px;">${escapeHtml(t)}</span>
+        <select id="ddsStatyaSelect-${i}">${DDS_FIELD_OPTIONS.map(([v,l])=>`<option value="${v}" ${v==='ignore'?'selected':''}>${escapeHtml(l)}</option>`).join('')}</select>
+      </div>`).join('');
+  }
+  if(unknownDirection.length){
+    html += `<div style="font-weight:600;margin:10px 0 4px;">Направления → раздел дашборда:</div>`;
+    html += unknownDirection.map((t,i)=>`
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+        <span style="min-width:280px;">${escapeHtml(t)}</span>
+        <select id="ddsDirectionSelect-${i}">${ddsSectionOptions().map(([v,l])=>`<option value="${v}" ${v==='ignore'?'selected':''}>${escapeHtml(l)}</option>`).join('')}</select>
+      </div>`).join('');
+  }
+  html += `<div style="margin-top:10px;display:flex;gap:8px;">
+    <button class="save-btn" onclick="resolveDdsUnknownAndContinue()">Запомнить и продолжить импорт</button>
+    <button onclick="cancelDdsImport()">Отмена</button>
+  </div></div>`;
+  renderDdsReport(html);
+}
+
+async function resolveDdsUnknownAndContinue(){
+  pendingDdsUnknownStatya.forEach((t,i)=>{
+    const sel = document.getElementById('ddsStatyaSelect-'+i);
+    if(sel) ddsImportMap.statyaMap[t] = sel.value;
+  });
+  pendingDdsUnknownDirection.forEach((t,i)=>{
+    const sel = document.getElementById('ddsDirectionSelect-'+i);
+    if(sel) ddsImportMap.directionMap[t] = sel.value;
+  });
+  await saveDdsImportMap();
+  renderDdsKnownMappings();
+  pendingDdsUnknownStatya = []; pendingDdsUnknownDirection = [];
+  const entries = pendingDdsEntries;
+  pendingDdsEntries = null;
+  if(entries) proceedDdsAggregation(entries);
+}
+
+function cancelDdsImport(){
+  pendingDdsEntries = null;
+  pendingDdsUnknownStatya = []; pendingDdsUnknownDirection = [];
+  pendingDdsConflicts = null;
+  renderDdsReport('');
+}
+
+// Сворачивает строки в суммы по (день, раздел, поле), затем делит на "применить сразу"
+// (там, где сейчас 0) и "конфликт" (там, где уже есть ненулевое значение — по решению
+// каждый такой случай нужно показать и спросить, а не молча перезаписывать или складывать).
+function proceedDdsAggregation(entries){
+  const totals = {};
+  entries.forEach(e=>{
+    const field = resolveDdsStatya(e.statyaRaw);
+    const sectionId = resolveDdsDirection(e.directionRaw);
+    if(!field || field==='ignore') return;
+    if(!sectionId || sectionId==='ignore') return;
+    const key = e.dateStr+'|'+sectionId+'|'+field;
+    if(!totals[key]) totals[key] = {dateStr:e.dateStr, sectionId, field, amount:0};
+    totals[key].amount += e.amount;
+  });
+  const list = Object.values(totals);
+  list.forEach(t=>{ t.amount = round2(t.amount); });
+
+  if(list.length===0){
+    renderDdsReport('<div class="import-warn">Все строки файла размечены как «не переносить»/«не относится к дашборду» — применять нечего.</div>');
+    return;
+  }
+
+  const autoApply = [];
+  const conflicts = [];
+  list.forEach(t=>{
+    const day = getOrCreateDdsDay(t.sectionId, t.dateStr);
+    const oldVal = num((day.external||{})[t.field]);
+    if(oldVal!==0) conflicts.push({...t, oldVal});
+    else autoApply.push(t);
+  });
+
+  applyDdsEntries(autoApply);
+  populateMonthSelectors();
+  renderDaily(); renderSummary();
+
+  if(conflicts.length===0){
+    renderDdsReport(ddsFinalReportHtml(autoApply, [], []));
+    return;
+  }
+  pendingDdsConflicts = conflicts;
+  renderDdsConflictResolver(conflicts, autoApply);
+}
+
+// Записывает список {dateStr, sectionId, field, amount} в состояние (перезаписывает поле)
+// и ставит затронутые разделы в очередь сохранения — каждый раздел своей очередью,
+// без риска гонки при параллельной записи в несколько разделов одновременно.
+function applyDdsEntries(list){
+  const touchedSections = new Set();
+  list.forEach(t=>{
+    const day = getOrCreateDdsDay(t.sectionId, t.dateStr);
+    day.external[t.field] = t.amount;
+    touchedSections.add(t.sectionId);
+  });
+  touchedSections.forEach(sid=>save(sid));
+  return [...touchedSections];
+}
+
+function renderDdsConflictResolver(conflicts, autoApplied){
+  let html = ddsFinalReportHtml(autoApplied, [], [], true);
+  html += `<div class="import-warn"><div style="font-weight:650;margin-bottom:8px;">
+    По этим дням/разделам/статьям уже есть значение — выберите, что делать с каждым:</div>
+    <table class="import-table"><thead><tr><th>Дата</th><th>Раздел</th><th>Статья</th><th>Было</th><th>Из файла</th><th>Действие</th></tr></thead><tbody>`;
+  html += conflicts.map((c,i)=>`
+    <tr>
+      <td>${fmtDate(c.dateStr)}</td>
+      <td>${escapeHtml(ddsSectionLabel(c.sectionId))}</td>
+      <td>${escapeHtml(ddsFieldLabel(c.field))}</td>
+      <td>${fmt(c.oldVal)}</td>
+      <td>${fmt(c.amount)}</td>
+      <td><select id="ddsConflictSelect-${i}">
+        <option value="keep" selected>Оставить старое</option>
+        <option value="replace">Заменить на файл</option>
+      </select></td>
+    </tr>`).join('');
+  html += `</tbody></table>
+    <div style="margin-top:10px;display:flex;gap:8px;">
+      <button class="save-btn" onclick="applyDdsConflictsAndFinish()">Применить выбранное и завершить импорт</button>
+      <button onclick="cancelDdsImport()">Закрыть (остальное уже применено)</button>
+    </div></div>`;
+  renderDdsReport(html);
+}
+
+function applyDdsConflictsAndFinish(){
+  const conflicts = pendingDdsConflicts || [];
+  const toReplace = [];
+  const kept = [];
+  conflicts.forEach((c,i)=>{
+    const sel = document.getElementById('ddsConflictSelect-'+i);
+    if(sel && sel.value==='replace') toReplace.push(c);
+    else kept.push(c);
+  });
+  applyDdsEntries(toReplace);
+  pendingDdsConflicts = null;
+  renderDdsReport(ddsFinalReportHtml([], toReplace, kept));
+  populateMonthSelectors();
+  renderDaily(); renderSummary();
+}
+
+function ddsFinalReportHtml(autoApplied, replaced, kept, partial){
+  const applied = [...autoApplied, ...replaced];
+  let html = '';
+  if(applied.length){
+    const dates = applied.map(a=>a.dateStr).sort();
+    html += `<div class="import-ok">${partial?'Уже применено':'Импортировано'}: ${applied.length} строк, дни ${fmtDate(dates[0])} — ${fmtDate(dates[dates.length-1])}.</div>`;
+    html += `<table class="import-table"><thead><tr><th>Дата</th><th>Раздел</th><th>Статья</th><th>Сумма</th></tr></thead><tbody>`;
+    html += applied.slice().sort((a,b)=>a.dateStr.localeCompare(b.dateStr)).map(a=>`
+      <tr><td>${fmtDate(a.dateStr)}</td><td>${escapeHtml(ddsSectionLabel(a.sectionId))}</td><td>${escapeHtml(ddsFieldLabel(a.field))}</td><td>${fmt(a.amount)}</td></tr>
+    `).join('');
+    html += `</tbody></table>`;
+  }
+  if(kept && kept.length){
+    html += `<div class="import-warn">Оставлено без изменений (по вашему выбору): ${kept.length} строк.</div>`;
+  }
+  if(!applied.length && !(kept&&kept.length)){
+    html += `<div class="import-warn">Подходящих строк для применения не найдено.</div>`;
+  }
+  return html;
+}
+
+function renderDdsKnownMappings(){
+  const el = document.getElementById('ddsKnownMappings');
+  if(!el) return;
+  const statyaEntries = Object.entries(ddsImportMap.statyaMap||{});
+  const directionEntries = Object.entries(ddsImportMap.directionMap||{});
+  window.__ddsStatyaEntries = statyaEntries;
+  window.__ddsDirectionEntries = directionEntries;
+  if(statyaEntries.length===0 && directionEntries.length===0){ el.innerHTML=''; return; }
+  let html = `<div style="margin-top:14px;font-size:11.5px;color:var(--ink-dim);">`;
+  if(statyaEntries.length){
+    html += `<div style="font-weight:600;margin-bottom:4px;">Запомненные статьи (сверх встроенных):</div>`;
+    html += statyaEntries.map(([t,f],i)=>`
+      <div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px dashed var(--line);">
+        <span>${escapeHtml(t)} → ${escapeHtml(ddsFieldLabel(f))}</span>
+        <button style="background:none;border:none;color:var(--bad);cursor:pointer;font-size:11.5px;" onclick="removeDdsStatyaMapping(${i})">убрать</button>
+      </div>`).join('');
+  }
+  if(directionEntries.length){
+    html += `<div style="font-weight:600;margin:10px 0 4px;">Запомненные направления (сверх встроенных):</div>`;
+    html += directionEntries.map(([t,f],i)=>`
+      <div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px dashed var(--line);">
+        <span>${escapeHtml(t)} → ${escapeHtml(ddsSectionLabel(f))}</span>
+        <button style="background:none;border:none;color:var(--bad);cursor:pointer;font-size:11.5px;" onclick="removeDdsDirectionMapping(${i})">убрать</button>
+      </div>`).join('');
+  }
+  html += `</div>`;
+  el.innerHTML = html;
+}
+async function removeDdsStatyaMapping(i){
+  const entries = window.__ddsStatyaEntries || [];
+  const entry = entries[i];
+  if(!entry) return;
+  delete ddsImportMap.statyaMap[entry[0]];
+  await saveDdsImportMap();
+  renderDdsKnownMappings();
+}
+async function removeDdsDirectionMapping(i){
+  const entries = window.__ddsDirectionEntries || [];
+  const entry = entries[i];
+  if(!entry) return;
+  delete ddsImportMap.directionMap[entry[0]];
+  await saveDdsImportMap();
+  renderDdsKnownMappings();
+}
+
+function handleDdsImportFile(){
+  const input = document.getElementById('importFileInputDds');
+  const file = input.files && input.files[0];
+  if(!file){ alert('Выберите файл ДДС (.xlsx).'); return; }
+  const btn = document.getElementById('importBtnDds');
+  btn.disabled = true;
+  const originalLabel = btn.textContent;
+  btn.textContent = 'Читаю файл…';
+
+  const reader = new FileReader();
+  reader.onload = async (e)=>{
+    try{
+      const rows = await parseGenericXlsxFile(e.target.result);
+      const entries = parseDdsRows(rows);
+      runDdsResolution(entries);
+    }catch(err){
+      renderDdsReport(`<div class="import-err">Не удалось разобрать файл: ${escapeHtml(err.message)}</div>`);
+    }finally{
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+      input.value = '';
+    }
+  };
+  reader.onerror = ()=>{
+    renderDdsReport('<div class="import-err">Не удалось прочитать файл.</div>');
+    btn.disabled = false; btn.textContent = originalLabel;
+  };
+  reader.readAsArrayBuffer(file);
+}
+
 /* ======================= TRANSPOSED DAILY TABLE ======================= */
 function getGroupMeta(){
   const t = activeSectionType();
@@ -2795,6 +3276,7 @@ function escapeHtml(s){
 async function startApp(){
   rootState = await loadRootAsync();
   await loadSharedProducts();
+  await loadDdsImportMap();
 
   // Одноразовая подстраховка при введении галочки "Сайт": если товар уже фигурировал
   // в продажах раздела "Сайт" (были заполненные количества), включаем галочку автоматически,
@@ -2815,14 +3297,17 @@ async function startApp(){
     if(changed) await saveSharedProducts();
   }
 
-  // если у какого-то раздела ещё нет ни одного месяца — создаём текущий и сохраняем именно этот раздел
-  await Promise.all(SECTIONS_CONFIG.map(async cfg=>{
+  // если у какого-то раздела ещё нет ни одного месяца — создаём текущий и сохраняем именно этот раздел.
+  // Последовательно, не Promise.all: при первом запуске на пустом хранилище это может быть сразу
+  // 7 разделов, и параллельный залп записей иногда упирается в лимит одновременных запросов
+  // тестового window.storage ("Internal server error").
+  for(const cfg of SECTIONS_CONFIG){
     const sectionData = rootState.sections[cfg.id];
     if(Object.keys(sectionData.months).length===0){
       ensureMonth(currentMonthKey(), sectionData, cfg.type);
       await save(cfg.id);
     }
-  }));
+  }
   state = rootState.sections[rootState.activeSectionId];
 
   populateMonthSelectors();
