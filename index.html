@@ -1781,9 +1781,16 @@ function applyImportedAccruals(byDate){
     day.reward = acc.reward;
     day.logistics = acc.logistics;
     day.fines = acc.fines;
+    day.extraPayments = acc.extraPayments;
     day.storage = acc.storage;
     day.otherExpenses = acc.otherExpenses;
     day.adSpend = acc.adSpend;
+
+    // Перед повторным импортом того же дня обнуляем прошлые количества по SKU — иначе
+    // товар, который был в старом файле, но отсутствует в новом (например, файл поправили
+    // и заказов по нему в этот день больше нет), сохранил бы устаревшее количество и
+    // раздутую себестоимость.
+    day.salesQty = {};
 
     Object.entries(acc.skuQty).forEach(([sku, qty])=>{
       const product = productBySku[sku];
@@ -2190,6 +2197,10 @@ function applyWBRedemptions(date, qtyByArticle){
 
   const matched = [];
   const unmatched = [];
+  // Тот же принцип, что и в импорте Ozon: обнуляем прошлые количества по SKU перед
+  // применением нового файла за этот день, чтобы не осталось устаревших цифр от старой
+  // выгрузки (и раздутой себестоимости) по товару, которого в новом файле уже нет.
+  day.salesQty = {};
   Object.entries(qtyByArticle).forEach(([article, qty])=>{
     const product = productByArticle[article];
     if(product){
@@ -2865,7 +2876,6 @@ function computeMonthTotalsOzon(key){
     cogs:0, netToAccount:0, externalTotal:0, selfBuyRub:0, selfBuyCost:0,
     margin:0, tax:0, ebitda:0, netProfit:0
   };
-  const drrList=[];
   const salesByProduct = {};
   const externalByField = Object.fromEntries(EXTERNAL_FIELDS.map(f=>[f[0],0]));
   productsForSection(rootState.activeSectionId).forEach(p=>salesByProduct[p.id]=0);
@@ -2891,12 +2901,13 @@ function computeMonthTotalsOzon(key){
     totals.tax += c.tax;
     totals.ebitda += c.ebitda;
     totals.netProfit += c.netProfit;
-    if(c.drr!==null) drrList.push(c.drr);
     productsForSection(rootState.activeSectionId).forEach(p=>{ salesByProduct[p.id]+= num(day.salesQty[p.id]); });
     EXTERNAL_FIELDS.forEach(([id])=>{ externalByField[id] += num((day.external||{})[id]); });
   });
 
-  const avgDrr = drrList.length? drrList.reduce((a,b)=>a+b,0)/drrList.length : null;
+  // ДРР месяца — взвешенный (реклама/выручка за весь месяц), а не среднее дневных ДРР:
+  // среднее по дням завышает результат, если в дни с маленькой выручкой ДРР был выше.
+  const avgDrr = totals.salesRub===0 ? null : totals.adSpend/totals.salesRub;
   const marginality = totals.salesRub===0? null : totals.ebitda/totals.salesRub;
 
   return {...totals, avgDrr, salesByProduct, externalByField, marginality};
@@ -2910,7 +2921,6 @@ function computeMonthTotalsWB(key){
     cogs:0, netToAccount:0, externalTotal:0, selfBuyRub:0, selfBuyCost:0,
     margin:0, tax:0, ebitda:0, netProfit:0
   };
-  const drrList=[];
   const salesByProduct = {};
   const externalByField = Object.fromEntries(EXTERNAL_FIELDS.map(f=>[f[0],0]));
   productsForSection(rootState.activeSectionId).forEach(p=>salesByProduct[p.id]=0);
@@ -2938,12 +2948,12 @@ function computeMonthTotalsWB(key){
     totals.tax += c.tax;
     totals.ebitda += c.ebitda;
     totals.netProfit += c.netProfit;
-    if(c.drr!==null) drrList.push(c.drr);
     productsForSection(rootState.activeSectionId).forEach(p=>{ salesByProduct[p.id]+= num(day.salesQty[p.id]); });
     EXTERNAL_FIELDS.forEach(([id])=>{ externalByField[id] += num((day.external||{})[id]); });
   });
 
-  const avgDrr = drrList.length? drrList.reduce((a,b)=>a+b,0)/drrList.length : null;
+  // ДРР месяца — взвешенный (реклама/выручка за весь месяц), не среднее дневных ДРР.
+  const avgDrr = totals.salesRub===0 ? null : totals.adsMemo/totals.salesRub;
   const marginality = totals.salesRub===0? null : totals.ebitda/totals.salesRub;
 
   return {...totals, avgDrr, salesByProduct, externalByField, marginality};
@@ -2957,7 +2967,6 @@ function computeMonthTotalsYM(key){
     cogs:0, netToAccount:0, externalTotal:0, selfBuyRub:0, selfBuyCost:0,
     margin:0, tax:0, ebitda:0, netProfit:0
   };
-  const drrList=[];
   const externalByField = Object.fromEntries(EXTERNAL_FIELDS.map(f=>[f[0],0]));
 
   month.days.forEach(day=>{
@@ -2982,11 +2991,11 @@ function computeMonthTotalsYM(key){
     totals.tax += c.tax;
     totals.ebitda += c.ebitda;
     totals.netProfit += c.netProfit;
-    if(c.drr!==null) drrList.push(c.drr);
     EXTERNAL_FIELDS.forEach(([id])=>{ externalByField[id] += num((day.external||{})[id]); });
   });
 
-  const avgDrr = drrList.length? drrList.reduce((a,b)=>a+b,0)/drrList.length : null;
+  // ДРР месяца — взвешенный (реклама/выручка за весь месяц), не среднее дневных ДРР.
+  const avgDrr = totals.salesRub===0 ? null : totals.adSpend/totals.salesRub;
   const marginality = totals.salesRub===0? null : totals.ebitda/totals.salesRub;
 
   return {...totals, avgDrr, salesByProduct:{}, externalByField, marginality};
