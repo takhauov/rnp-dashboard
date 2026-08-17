@@ -582,13 +582,26 @@ async function storeGet(key){
     try{ const r = await window.storage.get(key, false); return r ? JSON.parse(r.value) : null; }
     catch(e){ return null; }
   }
-  try{
-    const db = await initFirebase();
-    const doc = await db.collection(FIRESTORE_COLLECTION).doc(key).get();
-    if(!doc.exists) return null;
-    const data = doc.data();
-    return (data && data.v!==undefined) ? JSON.parse(data.v) : null;
-  }catch(e){ console.error('storage get failed', key, e); return null; }
+  let lastErr = null;
+  for(let attempt=0; attempt<3; attempt++){
+    try{
+      const db = await initFirebase();
+      const doc = await db.collection(FIRESTORE_COLLECTION).doc(key).get();
+      if(!doc.exists) return null; // документа действительно нет — это не сбой
+      const data = doc.data();
+      return (data && data.v!==undefined) ? JSON.parse(data.v) : null;
+    }catch(e){
+      lastErr = e;
+      console.error('storage get failed', key, e);
+      if(attempt<2) await new Promise(res=>setTimeout(res, 600*(attempt+1)));
+    }
+  }
+  // Все попытки прочитать провалились — это НЕ «документа нет». Кидаем ошибку дальше,
+  // чтобы вызывающий код не спутал сбой чтения с пустым/новым разделом и не создал
+  // (и не сохранил!) пустой месяц поверх недочитанных, но реально существующих данных.
+  const err = new Error('Не удалось прочитать "'+key+'" после нескольких попыток: '+(lastErr && lastErr.message));
+  err.isStoreReadFailure = true;
+  throw err;
 }
 async function storeSet(key, val){
   if(!USE_FIREBASE){
@@ -806,17 +819,28 @@ async function saveSharedProducts(){
 
 // Загружает все 6 разделов параллельно, применяет миграцию к каждому.
 async function loadRootAsync(){
+  // Раздел, который не удалось прочитать (после ретраев в storeGet), НЕ подставляем
+  // пустым состоянием — иначе он неотличим от "только что созданного" раздела, и
+  // код ниже по старту рискует создать и СОХРАНИТЬ поверх него пустой месяц,
+  // затерев недочитанные, но реально существующие данные (так и случилось один раз).
+  const loadFailed = new Set();
   const entries = await Promise.all(SECTIONS_CONFIG.map(async cfg=>{
-    let data = await storeGet(sectionStoreKey(cfg.id));
-    if(!data) data = defaultSectionState();
-    migrateSectionData(data, cfg.type);
-    return [cfg.id, data];
+    let data = null;
+    try{
+      data = await storeGet(sectionStoreKey(cfg.id));
+    }catch(e){
+      loadFailed.add(cfg.id);
+      console.error('Раздел не загрузился, не трогаю:', cfg.id, e);
+    }
+    if(data===null && !loadFailed.has(cfg.id)) data = defaultSectionState();
+    if(data) migrateSectionData(data, cfg.type);
+    return [cfg.id, data || defaultSectionState()]; // плейсхолдер для рендера, но не для сохранения — см. loadFailed
   }));
   const sections = Object.fromEntries(entries);
   let lastSection = null;
   try{ lastSection = localStorage.getItem(LAST_SECTION_KEY); }catch(e){}
   const activeSectionId = (lastSection && sections[lastSection]) ? lastSection : SECTIONS_CONFIG[0].id;
-  return {activeSectionId, sections};
+  return {activeSectionId, sections, loadFailed};
 }
 
 function migrateSectionData(data, sectionType){
@@ -861,6 +885,14 @@ function migrateSectionData(data, sectionType){
 const saveQueues = {};
 function save(sectionId){
   const id = sectionId || rootState.activeSectionId;
+  if(rootState.loadFailed && rootState.loadFailed.has(id)){
+    // Раздел не удалось прочитать при открытии — сохранение заблокировано, чтобы
+    // случайная правка не затёрла недочитанные, но реально существующие данные
+    // пустым/неполным состоянием. Обновление страницы (успешное) снимает блокировку.
+    const cfg = SECTIONS_CONFIG.find(c=>c.id===id);
+    showFbError('Раздел «'+(cfg?cfg.label:id)+'» не загрузился при открытии дашборда — сохранение заблокировано, ничего не может быть случайно затёрто. Обновите страницу (Ctrl+F5); если не поможет — не вносите сюда данные и сообщите разработчику.');
+    return Promise.resolve();
+  }
   const prev = saveQueues[id] || Promise.resolve();
   const next = prev.then(async ()=>{
     const ok = await storeSet(sectionStoreKey(id), rootState.sections[id]);
@@ -3284,6 +3316,13 @@ function escapeHtml(s){
 /* ======================= BOOT ======================= */
 async function startApp(){
   rootState = await loadRootAsync();
+  if(rootState.loadFailed && rootState.loadFailed.size>0){
+    const names = [...rootState.loadFailed].map(id=>{
+      const cfg = SECTIONS_CONFIG.find(c=>c.id===id);
+      return cfg ? cfg.label : id;
+    }).join(', ');
+    showFbError('Не удалось загрузить данные раздела(ов): '+names+'. Ничего не тронуто и не перезаписано — сохранение в них заблокировано до успешной перезагрузки. Обновите страницу (Ctrl+F5). Если не поможет за 1-2 попытки — не вносите туда данные и сообщите разработчику.');
+  }
   await loadSharedProducts();
   await loadDdsImportMap();
 
@@ -3311,6 +3350,7 @@ async function startApp(){
   // 7 разделов, и параллельный залп записей иногда упирается в лимит одновременных запросов
   // тестового window.storage ("Internal server error").
   for(const cfg of SECTIONS_CONFIG){
+    if(rootState.loadFailed && rootState.loadFailed.has(cfg.id)) continue; // не трогаем — данные не загрузились, а не "раздел пуст"
     const sectionData = rootState.sections[cfg.id];
     if(Object.keys(sectionData.months).length===0){
       ensureMonth(currentMonthKey(), sectionData, cfg.type);
