@@ -478,7 +478,7 @@ h3.subhead{font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:
     <p class="desc">Переключатель наверху («OZON SEKAI», «OZON MELD», «WB SEKAI», «ЯМ SEKAI», «ЯМ MELD», «Сайт») — это полностью независимые наборы данных: свои товары, свои дни, своя ставка налога.</p>
 
     <h3 class="subhead">Товары и себестоимость</h3>
-    <p class="desc">Есть на Ozon, WB и «Сайте» — там себестоимость проданного считается по количеству и датированной себестоимости товара. У ЯМ товарного каталога нет: себестоимость проданного вводится вручную одной суммой за день. Себестоимость товара можно скорректировать с указанием даты — все дни ДО этой даты считаются по старой себестоимости, все дни ОТ неё и позже — по новой.</p>
+    <p class="desc">Есть на Ozon, WB, ЯМ и «Сайте» — себестоимость проданного считается по количеству (сколько продано товара в этот день, по каждому SKU) и датированной себестоимости товара. Себестоимость товара можно скорректировать с указанием даты — все дни ДО этой даты считаются по старой себестоимости, все дни ОТ неё и позже — по новой.</p>
 
     <h3 class="subhead">Ставка налога</h3>
     <p class="desc">Задаётся на вкладке «Ежедневные данные», действует так же, как себестоимость — с даты сохранения.</p>
@@ -744,9 +744,11 @@ const PRODUCT_ARTICLE_SECTIONS = [
   {id:'ozon_meld',  label:'SKU (Ozon MELD)'},
   {id:'wb_sekai',   label:'Артикул WB (WB SEKAI)'},
   {id:'wb_meld',    label:'Артикул WB (WB MELD)'},
+  {id:'ym_sekai',   label:'Артикул ЯМ (ЯМ SEKAI)'},
+  {id:'ym_meld',    label:'Артикул ЯМ (ЯМ MELD)'},
 ];
 // Разделы, которые используют общий каталог товаров (для расчёта себестоимости по количеству).
-const SECTIONS_USING_PRODUCTS = ['ozon_sekai','ozon_meld','wb_sekai','wb_meld','site'];
+const SECTIONS_USING_PRODUCTS = ['ozon_sekai','ozon_meld','wb_sekai','wb_meld','ym_sekai','ym_meld','site'];
 
 // Товар попадает в конкретный раздел (и участвует там в расчёте себестоимости), только если
 // для него заполнен артикул этой площадки — а для "Сайта" (там нет автоматического импорта
@@ -862,6 +864,7 @@ function migrateSectionData(data, sectionType){
       if(!day.external) day.external = Object.fromEntries(EXTERNAL_FIELDS.map(f=>[f[0],0]));
       if(day.selfBuyRub===undefined) day.selfBuyRub = 0;
       if(day.selfBuyCost===undefined) day.selfBuyCost = 0;
+      if(!day.salesQty) day.salesQty = {}; // на случай старых дней ЯМ до появления каталога товаров
     });
     const total = daysInMonthCount(key);
     const existingDates = new Set((month.days||[]).map(d=>d.date));
@@ -1416,9 +1419,9 @@ function newDayRow(dateStr, type){
       orderedRub:0, orderedQty:0,
       salesRub:0, commission:0, logistics:0, fines:0, extraPayments:0,
       storage:0, paidAcceptance:0, otherExpenses:0, adSpend:0,
-      cogs:0,   // Себестоимость проданного — здесь вводится вручную, товарного каталога нет
       selfBuyRub:0, selfBuyCost:0,
-      external: Object.fromEntries(EXTERNAL_FIELDS.map(f=>[f[0],0]))
+      external: Object.fromEntries(EXTERNAL_FIELDS.map(f=>[f[0],0])),
+      salesQty:{}   // productId -> qty, для расчёта себестоимости проданного (как на Ozon/WB)
     };
   }
   if(t === 'site'){
@@ -1520,7 +1523,8 @@ function calcDayWB(day){
 
 // Каскад для раздела ЯМ. Структура почти как на Ozon: Комиссия ЯМ и Реклама — отдельные
 // ручные поля (без промежуточного "Выкуплено", как на WB), плюс есть "Стоимость приёмки"
-// (как на WB). Себестоимость проданного — здесь просто ручное поле (нет товарного каталога).
+// (как на WB). Себестоимость проданного считается по каталогу товаров — так же, как на
+// Ozon/WB/Сайте (количество по SKU × датированная себестоимость товара).
 function calcDayYM(day){
   const salesRub = num(day.salesRub);
   const commission = num(day.commission);
@@ -1529,7 +1533,11 @@ function calcDayYM(day){
         paidAcceptance = num(day.paidAcceptance), otherExpenses = num(day.otherExpenses),
         extraPayments = num(day.extraPayments);
 
-  const cogs = num(day.cogs);
+  let cogs = 0;
+  productsForSection(rootState.activeSectionId).forEach(p=>{
+    const qty = num((day.salesQty||{})[p.id]);
+    cogs += qty * getProductCostAt(p, day.date);
+  });
 
   const netToAccount = salesRub - commission - logistics - fines - storage - paidAcceptance
                         + extraPayments - otherExpenses - adSpend;
@@ -2745,13 +2753,16 @@ function buildMetricRowsWB(){
   return rows;
 }
 
-// Раздел ЯМ: нет каталога товаров, поэтому нет группы "Товары" и себестоимость —
-// обычное ручное поле внутри "Внутри ЯМ", а не расчёт по артикулам.
+// Раздел ЯМ: себестоимость теперь считается по каталогу товаров, как на Ozon/WB —
+// группа "Товары" с количеством по каждому SKU вместо ручного поля одной суммой.
 function buildMetricRowsYM(){
   const rows = [];
   rows.push({group:'orders', label:'Заказано до скидки, ₽', field:'orderedRub', kind:'money'});
   rows.push({group:'orders', label:'Заказано, шт', field:'orderedQty', kind:'qty'});
   rows.push({group:'sales', label:'Продажа, ₽', field:'salesRub', kind:'money'});
+  productsForSection(rootState.activeSectionId).forEach(p=>{
+    rows.push({group:'products', label:p.name, field:'salesQty.'+p.id, kind:'qty'});
+  });
   rows.push({group:'inside', label:'Комиссия ЯМ', field:'commission', kind:'money'});
   rows.push({group:'inside', label:'Логистика (в т.ч. кросс-докинг)', field:'logistics', kind:'money'});
   rows.push({group:'inside', label:'Штрафы', field:'fines', kind:'money'});
@@ -2760,7 +2771,6 @@ function buildMetricRowsYM(){
   rows.push({group:'inside', label:'Стоимость приёмки', field:'paidAcceptance', kind:'money'});
   rows.push({group:'inside', label:'Прочие расходы (в т.ч. эквайринг)', field:'otherExpenses', kind:'money'});
   rows.push({group:'inside', label:'Реклама', field:'adSpend', kind:'money'});
-  rows.push({group:'inside', label:'Себестоимость проданного товара', field:'cogs', kind:'money'});
   EXTERNAL_FIELDS.forEach(([id,label])=>{
     rows.push({group:'outside', label, field:'external.'+id, kind:'money'});
   });
@@ -2791,9 +2801,6 @@ function getResultRows(){
     {label:'Операционная прибыль (EBITDA)', key:'ebitda'},
     {label:'Чистая прибыль', key:'netProfit'},
   ];
-  // Для ЯМ себестоимость — это то же самое ручное поле, что уже показано выше во "Внутри ЯМ",
-  // повторять его в итогах дня не нужно.
-  if(activeSectionType()==='ym') return rows.filter(r=>r.key!=='cogs');
   // Для "Сайта" ДРР не считаем.
   if(activeSectionType()==='site') return rows.filter(r=>r.key!=='drr');
   return rows;
@@ -2815,8 +2822,7 @@ function renderDaily(){
     `заполнено дней: ${filledCount} из ${month.days.length}`;
 
   const wrap = document.getElementById('dailyTableWrap');
-  const usesProducts = activeSectionType()!=='ym';
-  if(usesProducts && productsForSection(rootState.activeSectionId).length===0){
+  if(productsForSection(rootState.activeSectionId).length===0){
     wrap.innerHTML = sharedProducts.length===0
       ? '<div class="empty-state">Сначала добавьте товары на странице «Товары» — тогда появятся строки продаж по товарам.</div>'
       : '<div class="empty-state">Для этого раздела нет ни одного товара с заполненным артикулом (или галочкой «Сайт»). Откройте «Товары» и укажите артикул/отметьте галочку для нужных товаров.</div>';
@@ -3000,6 +3006,8 @@ function computeMonthTotalsYM(key){
     margin:0, tax:0, ebitda:0, netProfit:0
   };
   const externalByField = Object.fromEntries(EXTERNAL_FIELDS.map(f=>[f[0],0]));
+  const salesByProduct = {};
+  productsForSection(rootState.activeSectionId).forEach(p=>salesByProduct[p.id]=0);
 
   month.days.forEach(day=>{
     const c = calcDay(day);
@@ -3023,6 +3031,7 @@ function computeMonthTotalsYM(key){
     totals.tax += c.tax;
     totals.ebitda += c.ebitda;
     totals.netProfit += c.netProfit;
+    productsForSection(rootState.activeSectionId).forEach(p=>{ salesByProduct[p.id]+= num((day.salesQty||{})[p.id]); });
     EXTERNAL_FIELDS.forEach(([id])=>{ externalByField[id] += num((day.external||{})[id]); });
   });
 
@@ -3030,7 +3039,7 @@ function computeMonthTotalsYM(key){
   const avgDrr = totals.salesRub===0 ? null : totals.adSpend/totals.salesRub;
   const marginality = totals.salesRub===0? null : totals.ebitda/totals.salesRub;
 
-  return {...totals, avgDrr, salesByProduct:{}, externalByField, marginality};
+  return {...totals, avgDrr, salesByProduct, externalByField, marginality};
 }
 
 function computeMonthTotalsSite(key){
@@ -3207,6 +3216,11 @@ function renderSummaryYM(month, t){
   const wfStep = (lbl,val,cls='')=>`
     <div class="wf-step ${cls}"><div class="lbl">${lbl}</div><div class="val">${fmt(val)} ₽</div></div>`;
 
+  const productRows = productsForSection(rootState.activeSectionId).map(p=>{
+    const qty = t.salesByProduct[p.id]||0;
+    return `<div class="kpi"><div class="lbl">${escapeHtml(p.name)}</div><div class="val">${fmtQty(qty)} шт · ${fmt(qty*getCurrentProductCost(p))} ₽</div></div>`;
+  }).join('');
+
   const externalRows = EXTERNAL_FIELDS.map(([id,label])=>`
     <div class="kpi"><div class="lbl">${label}</div><div class="val">${fmt(t.externalByField[id])}</div></div>
   `).join('');
@@ -3222,6 +3236,9 @@ function renderSummaryYM(month, t){
       ${wfStepPct('Маржинальность', t.marginality, (t.marginality!==null && t.marginality>=0)?'good':'bad')}
       ${wfStep('Чистая прибыль', t.netProfit, 'final')}
     </div>
+
+    <h3 class="subhead">Продано по товарам за месяц</h3>
+    <div class="kpi-grid">${productRows}</div>
 
     <h3 class="subhead">Ключевые метрики</h3>
     <div class="kpi-grid">
