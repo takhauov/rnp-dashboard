@@ -753,6 +753,13 @@ const SECTIONS_USING_PRODUCTS = ['ozon_sekai','ozon_meld','wb_sekai','wb_meld','
 // Товар попадает в конкретный раздел (и участвует там в расчёте себестоимости), только если
 // для него заполнен артикул этой площадки — а для "Сайта" (там нет автоматического импорта
 // и общего понятия артикула) используется отдельная галочка "включить в Сайт".
+// Разбирает поле артикула товара на список отдельных значений — можно вписать
+// несколько артикулов через запятую (например, товар переехал на новый SKU при
+// переразмещении на площадке, но продолжает считаться тем же товаром).
+function splitArticles(raw){
+  return String(raw||'').split(',').map(s=>s.trim()).filter(Boolean);
+}
+
 function productsForSection(sectionId){
   const filtered = sectionId==='site'
     ? sharedProducts.filter(p=>p.includeInSite)
@@ -1238,7 +1245,7 @@ function renderProducts(){
     const articleRows = PRODUCT_ARTICLE_SECTIONS.map(s=>`
       <div class="pc-article-row">
         <label>${s.label}</label>
-        <input type="text" value="${escapeHtml((p.articles||{})[s.id]||'')}" placeholder="артикул"
+        <input type="text" value="${escapeHtml((p.articles||{})[s.id]||'')}" placeholder="артикул(ы) через запятую"
           onchange="updateProductArticle('${p.id}','${s.id}', this.value)">
       </div>
     `).join('');
@@ -1803,7 +1810,7 @@ function aggregateAccrualRows(rows){
 function applyImportedAccruals(byDate){
   const sectionId = rootState.activeSectionId;
   const productBySku = {};
-  sharedProducts.forEach(p=>{ const a=(p.articles||{})[sectionId]; if(a) productBySku[String(a).trim()] = p; });
+  sharedProducts.forEach(p=>{ splitArticles((p.articles||{})[sectionId]).forEach(a=>{ productBySku[a] = p; }); });
 
   const datesUpdated = [];
   const unmatchedSkus = new Set();
@@ -2224,7 +2231,7 @@ function aggregateWBRedemptions(rows){
 
 function applyWBRedemptions(date, qtyByArticle){
   const productByArticle = {};
-  sharedProducts.forEach(p=>{ const a=(p.articles||{})[rootState.activeSectionId]; if(a) productByArticle[String(a).trim()] = p; });
+  sharedProducts.forEach(p=>{ splitArticles((p.articles||{})[rootState.activeSectionId]).forEach(a=>{ productByArticle[a] = p; }); });
 
   const monthKey = date.slice(0,7);
   const month = ensureMonth(monthKey);
