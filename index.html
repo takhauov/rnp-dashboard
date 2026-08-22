@@ -698,6 +698,9 @@ async function loadDdsImportMap(){
     ? {statyaMap: data.statyaMap||{}, directionMap: data.directionMap||{}}
     : {statyaMap:{}, directionMap:{}};
 }
+// БОЛЬШЕ НЕ ИСПОЛЬЗУЕТСЯ напрямую — заменено на commitDdsImportMapChange() (см. ниже),
+// которое не перезаписывает документ вслепую. Оставлено на случай, если понадобится
+// прямой доступ; новый код сюда обращаться не должен.
 async function saveDdsImportMap(){
   const ok = await storeSet('shared:dds_import_map', ddsImportMap);
   if(!ok) showFbError('Не удалось сохранить сопоставления ДДС — проверьте интернет-соединение.');
@@ -820,6 +823,9 @@ async function loadSharedProducts(){
   sharedProducts = data;
 }
 
+// БОЛЬШЕ НЕ ИСПОЛЬЗУЕТСЯ напрямую — заменено на commitSharedProductsChange() (см. ниже),
+// которое не перезаписывает документ вслепую. Оставлено на случай, если понадобится
+// прямой доступ; новый код сюда обращаться не должен.
 async function saveSharedProducts(){
   const ok = await storeSet('shared:products', sharedProducts);
   if(!ok) showFbError('Не удалось сохранить изменения в товарах — проверьте интернет-соединение.');
@@ -910,6 +916,154 @@ function save(sectionId){
     else hideFbError();
   }).catch(e=>{ console.error('ошибка в очереди сохранения', id, e); });
   saveQueues[id] = next;
+  return next;
+}
+
+/* ======================= БЕЗОПАСНОЕ (не перезаписывающее чужое) СОХРАНЕНИЕ =======================
+   save() выше пишет в базу локальный снимок раздела целиком — если вкладка была открыта давно
+   и кто-то другой (коллега в своей вкладке, или мы сами позже в этой же вкладке импортом ДДС)
+   уже сохранил более свежие данные в этот же раздел, save() их сотрёт: снимок новее по времени
+   записи, но старее по содержимому.
+
+   Ниже — тот же результат для пользователя (мгновенный отклик в интерфейсе), но без риска стереть
+   чужие изменения: правка описывается как отдельная функция-мутатор (не готовый объект), и в момент
+   реального сохранения мутатор применяется не к локальному снимку, а к САМОЙ СВЕЖЕЙ версии, только
+   что прочитанной из базы. В боевом режиме чтение и запись — это одна атомарная Firestore-транзакция
+   (runTransaction): если документ изменился между чтением и записью, Firestore сам перечитывает и
+   повторяет попытку — гонка невозможна в принципе, а не просто "маловероятна".
+
+   Распространяется на весь ручной ввод (ячейки дней, налоговая ставка, каталог товаров,
+   добавление/удаление месяца) и на весь импорт (Excel Ozon/WB, ДДС, сопоставления типов
+   начисления и статей ДДС) — единственное необщённое место осталось у save() выше: создание
+   месяца в по-настоящему пустом разделе при самом первом запуске дашборда (там гонке
+   взяться неоткуда — конкурировать не с чем, раздела ещё не существует ни у кого). */
+async function transactionalUpdate(key, makeDefault, migrateFn, mutatorFn){
+  if(!USE_FIREBASE){
+    // Тестовый режим: нет Firestore-транзакций, но всё равно читаем свежее значение
+    // непосредственно перед записью — так тестовый прогон ведёт себя максимально похоже
+    // на боевой режим (и ловит гонки в пределах одной вкладки/одного процесса).
+    for(let attempt=0; attempt<3; attempt++){
+      try{
+        let fresh = await storeGet(key);
+        if(fresh===null || fresh===undefined) fresh = makeDefault();
+        if(migrateFn) migrateFn(fresh);
+        mutatorFn(fresh);
+        const ok = await storeSet(key, fresh);
+        if(ok) return fresh;
+      }catch(e){ console.error('transactionalUpdate (тестовый режим) не удалось', key, e); }
+    }
+    return null;
+  }
+  // Боевой режим: несколько попыток с паузой между ними — как у storeGet/storeSet — на
+  // случай кратковременного сбоя сети (не путать с настоящим конфликтом версий: тот
+  // Firestore разруливает сам, внутри одного вызова runTransaction, без участия этого цикла).
+  let lastErr = null;
+  for(let attempt=0; attempt<3; attempt++){
+    let result = null;
+    try{
+      const db = await initFirebase();
+      const ref = db.collection(FIRESTORE_COLLECTION).doc(key);
+      await db.runTransaction(async tx=>{
+        const doc = await tx.get(ref);
+        const data = doc.exists ? doc.data() : null;
+        let fresh = (data && data.v!==undefined) ? JSON.parse(data.v) : makeDefault();
+        if(migrateFn) migrateFn(fresh);
+        mutatorFn(fresh);
+        tx.set(ref, {v: JSON.stringify(fresh)});
+        result = fresh;
+      });
+      return result;
+    }catch(e){
+      lastErr = e;
+      console.error('transactionalUpdate не удалось (попытка '+(attempt+1)+')', key, e);
+      if(attempt<2) await new Promise(res=>setTimeout(res, 600*(attempt+1)));
+    }
+  }
+  console.error('transactionalUpdate: все попытки провалились', key, lastErr);
+  return null;
+}
+
+// Безопасное сохранение изменения ОДНОГО раздела. mutatorFn(sectionData) должен уметь
+// применяться повторно к любой версии раздела (в т.ч. более свежей, чем та, что сейчас
+// открыта в этой вкладке) — то есть описывать именно "что изменить", а не "готовый результат".
+function commitSectionChange(sectionId, mutatorFn){
+  if(rootState.loadFailed && rootState.loadFailed.has(sectionId)){
+    const cfg = SECTIONS_CONFIG.find(c=>c.id===sectionId);
+    showFbError('Раздел «'+(cfg?cfg.label:sectionId)+'» не загрузился при открытии дашборда — сохранение заблокировано, ничего не может быть случайно затёрто. Обновите страницу (Ctrl+F5); если не поможет — не вносите сюда данные и сообщите разработчику.');
+    return Promise.resolve(null);
+  }
+  const prev = saveQueues[sectionId] || Promise.resolve();
+  const next = prev.then(async ()=>{
+    const type = getSectionConfig(sectionId).type;
+    const fresh = await transactionalUpdate(
+      sectionStoreKey(sectionId),
+      defaultSectionState,
+      (data)=>migrateSectionData(data, type),
+      mutatorFn
+    );
+    if(fresh){
+      // Подтягиваем в интерфейс не только свою правку, но и всё, что успели сохранить
+      // другие сессии в этом разделе — так вкладка сама "догоняет" актуальное состояние.
+      rootState.sections[sectionId] = fresh;
+      if(sectionId===rootState.activeSectionId) state = fresh;
+      hideFbError();
+    } else {
+      showFbError('Не удалось сохранить изменения — проверьте интернет-соединение. Последнее изменение могло не сохраниться.');
+    }
+    return fresh;
+  }).catch(e=>{ console.error('ошибка в очереди сохранения', sectionId, e); return null; });
+  saveQueues[sectionId] = next;
+  return next;
+}
+
+// Тот же принцип для общего каталога товаров (shared:products) — отдельная очередь,
+// т.к. это отдельный документ, независимый от разделов.
+let sharedProductsSaveQueue = Promise.resolve();
+function commitSharedProductsChange(mutatorFn){
+  const prev = sharedProductsSaveQueue;
+  const next = prev.then(async ()=>{
+    const fresh = await transactionalUpdate(
+      'shared:products',
+      ()=>[],
+      (data)=>{ data.forEach(migrateSharedProduct); },
+      mutatorFn
+    );
+    if(fresh){
+      sharedProducts = fresh;
+      hideFbError();
+    } else {
+      showFbError('Не удалось сохранить изменения в товарах — проверьте интернет-соединение.');
+    }
+    return fresh;
+  }).catch(e=>{ console.error('ошибка в очереди сохранения товаров', e); return null; });
+  sharedProductsSaveQueue = next;
+  return next;
+}
+
+// Тот же принцип для справочника сопоставлений ДДС (shared:dds_import_map) — отдельная
+// очередь, независимая от разделов и от каталога товаров.
+let ddsImportMapSaveQueue = Promise.resolve();
+function commitDdsImportMapChange(mutatorFn){
+  const prev = ddsImportMapSaveQueue;
+  const next = prev.then(async ()=>{
+    const fresh = await transactionalUpdate(
+      'shared:dds_import_map',
+      ()=>({statyaMap:{}, directionMap:{}}),
+      (data)=>{
+        if(!data.statyaMap) data.statyaMap = {};
+        if(!data.directionMap) data.directionMap = {};
+      },
+      mutatorFn
+    );
+    if(fresh){
+      ddsImportMap = fresh;
+      hideFbError();
+    } else {
+      showFbError('Не удалось сохранить сопоставления ДДС — проверьте интернет-соединение.');
+    }
+    return fresh;
+  }).catch(e=>{ console.error('ошибка в очереди сохранения сопоставлений ДДС', e); return null; });
+  ddsImportMapSaveQueue = next;
   return next;
 }
 
@@ -1107,19 +1261,26 @@ function currentMonthKey(){
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
 }
 
-/* ======================= SAVE BUTTON INDICATOR ======================= */
+/* ======================= SAVE BUTTON INDICATOR =======================
+   Раньше здесь всегда вызывался общий save() — то есть сохранялся активный раздел,
+   даже если реальное изменение относилось к другому документу (например, себестоимость
+   товара, которая хранится не в разделе, а в shared:products — из-за этого правки
+   себестоимости визуально показывали "Сохранено", но реально в базу не уходили).
+   Теперь onCommitted сам отвечает за то, что и куда сохранять, и возвращает промис
+   с результатом — кнопка показывает "Сохранено" только если сохранение действительно
+   удалось. */
 function flashSaveButton(btn, onCommitted, onSettled){
   const original = btn.textContent;
   btn.disabled = true;
   btn.textContent = 'Сохраняю…';
-  setTimeout(()=>{
-    if(onCommitted) onCommitted();
-    save();
-    btn.textContent = 'Сохранено ✓';
-    btn.classList.add('saved');
+  setTimeout(async ()=>{
+    const result = onCommitted ? await onCommitted() : null;
+    const ok = result !== false && result !== null;
+    btn.textContent = ok ? 'Сохранено ✓' : 'Ошибка сохранения';
+    btn.classList.add(ok ? 'saved' : 'save-error');
     setTimeout(()=>{
       btn.disabled = false;
-      btn.classList.remove('saved');
+      btn.classList.remove('saved','save-error');
       btn.textContent = original;
       if(onSettled) onSettled();
     }, 900);
@@ -1297,38 +1458,59 @@ function addProduct(){
   const name = nameEl.value.trim();
   const cost = parseFloat(costEl.value)||0;
   if(!name){ nameEl.focus(); return; }
-  sharedProducts.push(defaultSharedProduct(name, cost));
+  const newProduct = defaultSharedProduct(name, cost);
+  const applyChange = (products)=>{
+    if(!products.some(p=>p.id===newProduct.id)) products.push(JSON.parse(JSON.stringify(newProduct)));
+  };
+  applyChange(sharedProducts);
   nameEl.value=''; costEl.value='';
-  saveSharedProducts(); renderProducts(); renderDaily(); renderSummary();
+  renderProducts(); renderDaily(); renderSummary();
+  commitSharedProductsChange(applyChange);
 }
 function removeProduct(id){
   if(!confirm('Удалить товар? Данные по его продажам в днях сохранятся, но перестанут отображаться.')) return;
-  sharedProducts = sharedProducts.filter(p=>p.id!==id);
-  saveSharedProducts(); renderProducts(); renderDaily(); renderSummary();
+  const applyChange = (products)=>{
+    const idx = products.findIndex(p=>p.id===id);
+    if(idx!==-1) products.splice(idx,1);
+  };
+  applyChange(sharedProducts);
+  renderProducts(); renderDaily(); renderSummary();
+  commitSharedProductsChange(applyChange);
 }
 function updateProductArticle(id, sectionId, value){
-  const p = sharedProducts.find(p=>p.id===id);
-  if(!p) return;
-  if(!p.articles) p.articles = {};
-  p.articles[sectionId] = value.trim();
-  saveSharedProducts();
+  const trimmed = value.trim();
+  const applyChange = (products)=>{
+    const p = products.find(p=>p.id===id);
+    if(!p) return;
+    if(!p.articles) p.articles = {};
+    p.articles[sectionId] = trimmed;
+  };
+  applyChange(sharedProducts);
   renderDaily(); renderSummary();
+  commitSharedProductsChange(applyChange);
 }
 function updateProductSiteFlag(id, checked){
-  const p = sharedProducts.find(p=>p.id===id);
-  if(!p) return;
-  p.includeInSite = !!checked;
-  saveSharedProducts();
+  const flag = !!checked;
+  const applyChange = (products)=>{
+    const p = products.find(p=>p.id===id);
+    if(p) p.includeInSite = flag;
+  };
+  applyChange(sharedProducts);
   renderDaily(); renderSummary();
+  commitSharedProductsChange(applyChange);
 }
 function saveCost(id){
   const btn = document.getElementById('costSaveBtn-'+id);
   const dateVal = document.getElementById('costDate-'+id).value;
   const costVal = parseFloat(document.getElementById('costValue-'+id).value);
   if(!dateVal || isNaN(costVal)){ alert('Укажите дату и новую себестоимость.'); return; }
-  flashSaveButton(btn, ()=>{
-    const p = sharedProducts.find(p=>p.id===id);
-    upsertCostHistory(p, dateVal, costVal);
+  const applyChange = (products)=>{
+    const p = products.find(p=>p.id===id);
+    if(p) upsertCostHistory(p, dateVal, costVal);
+  };
+  flashSaveButton(btn, async ()=>{
+    applyChange(sharedProducts); // мгновенно локально
+    return await commitSharedProductsChange(applyChange); // и надёжно, отдельным документом, в базу
   }, ()=>{
     openProductEdit = null;
     renderProducts(); renderDaily(); renderSummary();
@@ -1345,8 +1527,18 @@ function saveTaxRate(){
   const btn = document.getElementById('saveTaxBtn');
   const val = parseFloat(document.getElementById('taxRateInput').value);
   if(isNaN(val)){ alert('Укажите новую ставку налога.'); return; }
-  flashSaveButton(btn, ()=>{
-    upsertTaxRate(todayStr(), val);
+  const sectionId = rootState.activeSectionId;
+  const dateStr = todayStr();
+  const applyChange = (sectionData)=>{
+    const hist = sectionData.taxRateHistory;
+    const existing = hist.find(h=>h.date===dateStr);
+    if(existing) existing.rate = val;
+    else hist.push({date:dateStr, rate:val});
+    hist.sort((a,b)=>a.date.localeCompare(b.date));
+  };
+  flashSaveButton(btn, async ()=>{
+    applyChange(state); // мгновенно локально
+    return await commitSectionChange(sectionId, applyChange); // и надёжно, не задевая дни, которые могли сохранить в это же время в другой вкладке
   }, ()=>{
     renderTaxBox(); renderDaily(); renderSummary();
   });
@@ -1383,26 +1575,34 @@ function addMonth(){
   const latest = keys[keys.length-1] || currentMonthKey();
   const newKey = nextMonthKey(latest);
   if(state.months[newKey]){ alert('Этот месяц уже добавлен.'); return; }
-  ensureMonth(newKey);
-  save();
+  const sectionId = rootState.activeSectionId;
+  const type = activeSectionType();
+  const applyChange = (sectionData)=>{ ensureMonth(newKey, sectionData, type); };
+  applyChange(state);
   selectedMonthKey = newKey;
   populateMonthSelectors();
   renderDaily(); renderSummary();
+  commitSectionChange(sectionId, applyChange);
 }
 
 function deleteMonth(){
   const key = document.getElementById('monthSelect').value;
   if(!key) return;
   if(!confirm(`Удалить месяц «${monthLabel(key)}» вместе со всеми введёнными за него данными? Это необратимо.`)) return;
-  delete state.months[key];
-  if(Object.keys(state.months).length===0){
-    // раздел не может остаться совсем без месяцев — создаём текущий календарный
-    ensureMonth(currentMonthKey());
-  }
+  const sectionId = rootState.activeSectionId;
+  const type = activeSectionType();
+  const applyChange = (sectionData)=>{
+    delete sectionData.months[key];
+    if(Object.keys(sectionData.months).length===0){
+      // раздел не может остаться совсем без месяцев — создаём текущий календарный
+      ensureMonth(currentMonthKey(), sectionData, type);
+    }
+  };
+  applyChange(state);
   selectedMonthKey = null; // пересчитаем дефолт (текущий месяц, если есть, иначе последний оставшийся)
-  save();
   populateMonthSelectors();
   renderDaily(); renderSummary();
+  commitSectionChange(sectionId, applyChange);
 }
 
 /* ======================= DAILY DATA MODEL ======================= */
@@ -1623,23 +1823,34 @@ function getFieldValue(day, path){
   return day[path];
 }
 function updateDayField(monthKey, idx, path, value){
-  const month = ensureMonth(monthKey);
-  const day = month.days[idx];
-  if(path.startsWith('salesQty.')){
-    const pid = path.split('.')[1];
-    day.salesQty[pid] = parseFloat(value)||0;
-  } else if(path.startsWith('external.')){
-    const fid = path.split('.')[1];
-    if(!day.external) day.external = {};
-    day.external[fid] = parseFloat(value)||0;
-  } else if(path==='date'){
-    day.date = value;
-  } else {
-    day[path] = parseFloat(value)||0;
-  }
-  save();
+  const sectionId = rootState.activeSectionId;
+  const type = getSectionConfig(sectionId).type;
+  // Мутатор описывает "что изменить" (день по индексу внутри месяца — индекс безопасен,
+  // т.к. ensureMonth всегда заполняет месяц ВСЕМИ календарными днями и сортирует по дате,
+  // так что позиция дня в массиве одинакова что в локальной копии, что в свежей из базы),
+  // а не готовый объект целиком — поэтому его можно применить повторно к самой свежей
+  // версии раздела прямо перед записью, не трогая дни, которые мог сохранить кто-то ещё.
+  const applyChange = (sectionData)=>{
+    const month = ensureMonth(monthKey, sectionData, type);
+    const day = month.days[idx];
+    if(!day) return; // защитно: не роняем сохранение, если структура почему-то разъехалась
+    if(path.startsWith('salesQty.')){
+      const pid = path.split('.')[1];
+      day.salesQty[pid] = parseFloat(value)||0;
+    } else if(path.startsWith('external.')){
+      const fid = path.split('.')[1];
+      if(!day.external) day.external = {};
+      day.external[fid] = parseFloat(value)||0;
+    } else if(path==='date'){
+      day.date = value;
+    } else {
+      day[path] = parseFloat(value)||0;
+    }
+  };
+  applyChange(state); // мгновенно, без задержки — иначе набор цифр в таблице будет подтормаживать
   renderDaily();
   renderSummary();
+  commitSectionChange(sectionId, applyChange); // фоном, надёжно, без риска стереть чужую правку
 }
 
 /* ======================= IMPORT FROM OZON ACCRUALS REPORT ======================= */
@@ -1809,49 +2020,55 @@ function aggregateAccrualRows(rows){
 
 function applyImportedAccruals(byDate){
   const sectionId = rootState.activeSectionId;
+  const type = getSectionConfig(sectionId).type;
   const productBySku = {};
   sharedProducts.forEach(p=>{ splitArticles((p.articles||{})[sectionId]).forEach(a=>{ productBySku[a] = p; }); });
 
   const datesUpdated = [];
   const unmatchedSkus = new Set();
-
-  Object.entries(byDate).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([dateStr, acc])=>{
-    const monthKey = dateStr.slice(0,7);
-    const month = ensureMonth(monthKey);
-    let day = month.days.find(d=>d.date===dateStr);
-    if(!day){
-      day = newDayRow(dateStr);
-      month.days.push(day);
-      month.days.sort((a,b)=>a.date.localeCompare(b.date));
-    }
-    day.salesRub = acc.salesRub;
-    day.reward = acc.reward;
-    day.logistics = acc.logistics;
-    day.fines = acc.fines;
-    day.extraPayments = acc.extraPayments;
-    day.storage = acc.storage;
-    day.otherExpenses = acc.otherExpenses;
-    day.adSpend = acc.adSpend;
-
-    // Перед повторным импортом того же дня обнуляем прошлые количества по SKU — иначе
-    // товар, который был в старом файле, но отсутствует в новом (например, файл поправили
-    // и заказов по нему в этот день больше нет), сохранил бы устаревшее количество и
-    // раздутую себестоимость.
-    day.salesQty = {};
-
-    Object.entries(acc.skuQty).forEach(([sku, qty])=>{
-      const product = productBySku[sku];
-      if(product){
-        day.salesQty[product.id] = qty;
-      } else {
-        unmatchedSkus.add(sku);
-      }
-    });
-
+  Object.entries(byDate).forEach(([dateStr, acc])=>{
     datesUpdated.push({date: dateStr, ...acc});
+    Object.keys(acc.skuQty).forEach(sku=>{ if(!productBySku[sku]) unmatchedSkus.add(sku); });
   });
 
-  save();
+  // Мутатор описывает "наложить эти строки импорта на раздел" — переносим саму логику
+  // в переиспользуемую функцию, чтобы применить её и мгновенно локально (для отчёта об
+  // импорте), и повторно — к самой свежей версии раздела прямо перед сохранением, не
+  // трогая дни, которые мог сохранить кто-то ещё за это время.
+  const applyChange = (sectionData)=>{
+    Object.entries(byDate).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([dateStr, acc])=>{
+      const monthKey = dateStr.slice(0,7);
+      const month = ensureMonth(monthKey, sectionData, type);
+      let day = month.days.find(d=>d.date===dateStr);
+      if(!day){
+        day = newDayRow(dateStr, type);
+        month.days.push(day);
+        month.days.sort((a,b)=>a.date.localeCompare(b.date));
+      }
+      day.salesRub = acc.salesRub;
+      day.reward = acc.reward;
+      day.logistics = acc.logistics;
+      day.fines = acc.fines;
+      day.extraPayments = acc.extraPayments;
+      day.storage = acc.storage;
+      day.otherExpenses = acc.otherExpenses;
+      day.adSpend = acc.adSpend;
+
+      // Перед повторным импортом того же дня обнуляем прошлые количества по SKU — иначе
+      // товар, который был в старом файле, но отсутствует в новом (например, файл поправили
+      // и заказов по нему в этот день больше нет), сохранил бы устаревшее количество и
+      // раздутую себестоимость.
+      day.salesQty = {};
+      Object.entries(acc.skuQty).forEach(([sku, qty])=>{
+        const product = productBySku[sku];
+        if(product) day.salesQty[product.id] = qty;
+      });
+    });
+  };
+
+  applyChange(state); // мгновенно локально
+  commitSectionChange(sectionId, applyChange); // и надёжно, поверх самой свежей версии раздела
+
   return {datesUpdated, unmatchedSkus};
 }
 
@@ -1888,13 +2105,19 @@ function renderUnknownTypesResolver(){
 }
 
 function resolveUnknownTypesAndReimport(){
-  if(!state.customTypeMap) state.customTypeMap = {};
+  const sectionId = rootState.activeSectionId;
+  const mapping = {};
   pendingUnknownTypes.forEach((t,i)=>{
     const sel = document.getElementById('unknownTypeSelect-'+i);
-    state.customTypeMap[t] = sel.value;
+    mapping[t] = sel.value;
   });
-  save();
+  const applyChange = (sectionData)=>{
+    if(!sectionData.customTypeMap) sectionData.customTypeMap = {};
+    Object.assign(sectionData.customTypeMap, mapping);
+  };
+  applyChange(state);
   renderKnownTypeMappings();
+  commitSectionChange(sectionId, applyChange);
   const rows = pendingImportRows;
   pendingImportRows = null; pendingUnknownTypes = [];
   runImport(rows);
@@ -1925,9 +2148,14 @@ function removeTypeMappingByIndex(i){
   const entries = window.__typeMapEntries || [];
   const entry = entries[i];
   if(!entry || !state.customTypeMap) return;
-  delete state.customTypeMap[entry[0]];
-  save();
+  const sectionId = rootState.activeSectionId;
+  const keyToRemove = entry[0];
+  const applyChange = (sectionData)=>{
+    if(sectionData.customTypeMap) delete sectionData.customTypeMap[keyToRemove];
+  };
+  applyChange(state);
   renderKnownTypeMappings();
+  commitSectionChange(sectionId, applyChange);
 }
 
 function runImport(rows){
@@ -2230,35 +2458,40 @@ function aggregateWBRedemptions(rows){
 }
 
 function applyWBRedemptions(date, qtyByArticle){
+  const sectionId = rootState.activeSectionId;
+  const type = getSectionConfig(sectionId).type;
   const productByArticle = {};
-  sharedProducts.forEach(p=>{ splitArticles((p.articles||{})[rootState.activeSectionId]).forEach(a=>{ productByArticle[a] = p; }); });
-
-  const monthKey = date.slice(0,7);
-  const month = ensureMonth(monthKey);
-  let day = month.days.find(d=>d.date===date);
-  if(!day){
-    day = newDayRow(date, 'wb');
-    month.days.push(day);
-    month.days.sort((a,b)=>a.date.localeCompare(b.date));
-  }
+  sharedProducts.forEach(p=>{ splitArticles((p.articles||{})[sectionId]).forEach(a=>{ productByArticle[a] = p; }); });
 
   const matched = [];
   const unmatched = [];
-  // Тот же принцип, что и в импорте Ozon: обнуляем прошлые количества по SKU перед
-  // применением нового файла за этот день, чтобы не осталось устаревших цифр от старой
-  // выгрузки (и раздутой себестоимости) по товару, которого в новом файле уже нет.
-  day.salesQty = {};
   Object.entries(qtyByArticle).forEach(([article, qty])=>{
     const product = productByArticle[article];
-    if(product){
-      day.salesQty[product.id] = round2(qty);
-      matched.push({name: product.name, qty});
-    } else {
-      unmatched.push({article, qty});
-    }
+    if(product) matched.push({name: product.name, qty});
+    else unmatched.push({article, qty});
   });
 
-  save();
+  const applyChange = (sectionData)=>{
+    const monthKey = date.slice(0,7);
+    const month = ensureMonth(monthKey, sectionData, type);
+    let day = month.days.find(d=>d.date===date);
+    if(!day){
+      day = newDayRow(date, type);
+      month.days.push(day);
+      month.days.sort((a,b)=>a.date.localeCompare(b.date));
+    }
+    // Тот же принцип, что и в импорте Ozon: обнуляем прошлые количества по SKU перед
+    // применением нового файла за этот день, чтобы не осталось устаревших цифр от старой
+    // выгрузки (и раздутой себестоимости) по товару, которого в новом файле уже нет.
+    day.salesQty = {};
+    Object.entries(qtyByArticle).forEach(([article, qty])=>{
+      const product = productByArticle[article];
+      if(product) day.salesQty[product.id] = round2(qty);
+    });
+  };
+
+  applyChange(state); // мгновенно локально
+  commitSectionChange(sectionId, applyChange); // и надёжно, поверх самой свежей версии раздела
   return {date, matched, unmatched};
 }
 
@@ -2408,11 +2641,15 @@ function renderDdsReport(html){
 
 // Возвращает (создавая при необходимости) день конкретного раздела — раздел может отличаться
 // от активного, потому что один файл ДДС пишет сразу в несколько разделов.
-function getOrCreateDdsDay(sectionId, dateStr){
-  const sectionData = rootState.sections[sectionId];
+// sectionData необязателен — по умолчанию берёт текущий локальный снимок раздела
+// (для мгновенного превью и для проверки конфликтов после refreshSectionData).
+// Для безопасного сохранения applyDdsEntries вызывает эту же функцию ещё раз, уже
+// передавая свежую версию раздела, прочитанную из базы прямо перед записью.
+function getOrCreateDdsDay(sectionId, dateStr, sectionData){
+  const data = sectionData || rootState.sections[sectionId];
   const cfg = getSectionConfig(sectionId);
   const monthKey = dateStr.slice(0,7);
-  const month = ensureMonth(monthKey, sectionData, cfg.type);
+  const month = ensureMonth(monthKey, data, cfg.type);
   let day = month.days.find(d=>d.date===dateStr);
   if(!day){
     day = newDayRow(dateStr, cfg.type);
@@ -2468,15 +2705,22 @@ function renderDdsUnknownResolver(unknownStatya, unknownDirection){
 }
 
 async function resolveDdsUnknownAndContinue(){
+  const statyaChoices = {};
   pendingDdsUnknownStatya.forEach((t,i)=>{
     const sel = document.getElementById('ddsStatyaSelect-'+i);
-    if(sel) ddsImportMap.statyaMap[t] = sel.value;
+    if(sel) statyaChoices[t] = sel.value;
   });
+  const directionChoices = {};
   pendingDdsUnknownDirection.forEach((t,i)=>{
     const sel = document.getElementById('ddsDirectionSelect-'+i);
-    if(sel) ddsImportMap.directionMap[t] = sel.value;
+    if(sel) directionChoices[t] = sel.value;
   });
-  await saveDdsImportMap();
+  const applyChange = (data)=>{
+    Object.assign(data.statyaMap, statyaChoices);
+    Object.assign(data.directionMap, directionChoices);
+  };
+  applyChange(ddsImportMap); // мгновенно локально
+  await commitDdsImportMapChange(applyChange); // и надёжно, не задевая правила, которые мог сохранить кто-то ещё
   renderDdsKnownMappings();
   pendingDdsUnknownStatya = []; pendingDdsUnknownDirection = [];
   const entries = pendingDdsEntries;
@@ -2491,10 +2735,13 @@ function cancelDdsImport(){
   renderDdsReport('');
 }
 
-// Сворачивает строки в суммы по (день, раздел, поле), затем делит на "применить сразу"
-// (там, где сейчас 0) и "конфликт" (там, где уже есть ненулевое значение — по решению
-// каждый такой случай нужно показать и спросить, а не молча перезаписывать или складывать).
-function proceedDdsAggregation(entries){
+// Сворачивает строки в суммы по (день, раздел, поле). Раньше "конфликт/не конфликт"
+// решался по тому, что уже лежало в ЛОКАЛЬНОЙ памяти вкладки — то есть если раздел давно
+// не открывали, он мог выглядеть "пустым" локально, хотя в базе там уже что-то было, и
+// импорт тихо записал бы поверх как "автоприменение", а не показал бы как конфликт.
+// Теперь перед принятием решения сначала подтягиваем свежие данные каждого затронутого
+// раздела из базы — конфликт проверяется по актуальному состоянию, а не по снимку вкладки.
+async function proceedDdsAggregation(entries){
   const totals = {};
   entries.forEach(e=>{
     const field = resolveDdsStatya(e.statyaRaw);
@@ -2513,10 +2760,18 @@ function proceedDdsAggregation(entries){
     return;
   }
 
+  const touchedSectionIds = [...new Set(list.map(t=>t.sectionId))];
+  renderDdsReport('<div class="import-warn">Проверяю актуальные данные по затронутым разделам…</div>');
+  for(const sid of touchedSectionIds){
+    if(!(rootState.loadFailed && rootState.loadFailed.has(sid))){
+      await refreshSectionData(sid);
+    }
+  }
+
   const autoApply = [];
   const conflicts = [];
   list.forEach(t=>{
-    const day = getOrCreateDdsDay(t.sectionId, t.dateStr);
+    const day = getOrCreateDdsDay(t.sectionId, t.dateStr); // уже по свежим данным после refreshSectionData
     const oldVal = num((day.external||{})[t.field]);
     if(oldVal!==0) conflicts.push({...t, oldVal});
     else autoApply.push(t);
@@ -2534,18 +2789,32 @@ function proceedDdsAggregation(entries){
   renderDdsConflictResolver(conflicts, autoApply);
 }
 
-// Записывает список {dateStr, sectionId, field, amount} в состояние (перезаписывает поле)
-// и ставит затронутые разделы в очередь сохранения — каждый раздел своей очередью,
-// без риска гонки при параллельной записи в несколько разделов одновременно.
+// Записывает список {dateStr, sectionId, field, amount}: мгновенно показывает изменения
+// локально, и отдельно, надёжно, сохраняет в базу. Для каждого затронутого раздела
+// строится мутатор ("наложить именно эти строки ДДС") — он применяется не к локальному
+// снимку раздела, а к самой свежей версии, прочитанной из базы непосредственно перед
+// записью. Это и есть защита от того, что случилось раньше: импорт ДДС в разделы, которые
+// вкладка давно не открывала (wb_sekai/wb_meld), больше не может стереть дни, которые
+// кто-то успел сохранить туда за это время.
 function applyDdsEntries(list){
-  const touchedSections = new Set();
+  const bySection = {};
   list.forEach(t=>{
-    const day = getOrCreateDdsDay(t.sectionId, t.dateStr);
-    day.external[t.field] = t.amount;
-    touchedSections.add(t.sectionId);
+    if(!bySection[t.sectionId]) bySection[t.sectionId] = [];
+    bySection[t.sectionId].push(t);
   });
-  touchedSections.forEach(sid=>save(sid));
-  return [...touchedSections];
+
+  Object.entries(bySection).forEach(([sectionId, sectionEntries])=>{
+    const applyChange = (sectionData)=>{
+      sectionEntries.forEach(t=>{
+        const day = getOrCreateDdsDay(sectionId, t.dateStr, sectionData);
+        day.external[t.field] = t.amount;
+      });
+    };
+    applyChange(rootState.sections[sectionId]); // мгновенно локально
+    commitSectionChange(sectionId, applyChange); // и надёжно, в фоне, поверх самой свежей версии
+  });
+
+  return Object.keys(bySection);
 }
 
 function renderDdsConflictResolver(conflicts, autoApplied){
@@ -2642,16 +2911,20 @@ async function removeDdsStatyaMapping(i){
   const entries = window.__ddsStatyaEntries || [];
   const entry = entries[i];
   if(!entry) return;
-  delete ddsImportMap.statyaMap[entry[0]];
-  await saveDdsImportMap();
+  const keyToRemove = entry[0];
+  const applyChange = (data)=>{ delete data.statyaMap[keyToRemove]; };
+  applyChange(ddsImportMap);
+  await commitDdsImportMapChange(applyChange);
   renderDdsKnownMappings();
 }
 async function removeDdsDirectionMapping(i){
   const entries = window.__ddsDirectionEntries || [];
   const entry = entries[i];
   if(!entry) return;
-  delete ddsImportMap.directionMap[entry[0]];
-  await saveDdsImportMap();
+  const keyToRemove = entry[0];
+  const applyChange = (data)=>{ delete data.directionMap[keyToRemove]; };
+  applyChange(ddsImportMap);
+  await commitDdsImportMapChange(applyChange);
   renderDdsKnownMappings();
 }
 
@@ -3353,20 +3626,26 @@ async function startApp(){
   // Одноразовая подстраховка при введении галочки "Сайт": если товар уже фигурировал
   // в продажах раздела "Сайт" (были заполненные количества), включаем галочку автоматически,
   // чтобы уже введённые данные не "пропали из виду" молча.
+  // Это срабатывает при КАЖДОЙ загрузке дашборда у КАЖДОГО сотрудника — поэтому идёт через
+  // безопасный коммит, а не напрямую: иначе, если кто-то в этот момент в другой вкладке
+  // добавляет/правит товар, эта проверка могла бы стереть его правку целым каталогом поверх.
   const siteSection = rootState.sections.site;
   if(siteSection){
-    let changed = false;
+    const idsToFlag = new Set();
     Object.values(siteSection.months||{}).forEach(month=>{
       (month.days||[]).forEach(day=>{
         Object.entries(day.salesQty||{}).forEach(([pid, qty])=>{
-          if(num(qty)!==0){
-            const p = sharedProducts.find(x=>x.id===pid);
-            if(p && !p.includeInSite){ p.includeInSite = true; changed = true; }
-          }
+          if(num(qty)!==0) idsToFlag.add(pid);
         });
       });
     });
-    if(changed) await saveSharedProducts();
+    if(idsToFlag.size>0){
+      const applyChange = (products)=>{
+        products.forEach(p=>{ if(idsToFlag.has(p.id) && !p.includeInSite) p.includeInSite = true; });
+      };
+      applyChange(sharedProducts); // мгновенно локально
+      commitSharedProductsChange(applyChange); // и надёжно, поверх самой свежей версии каталога
+    }
   }
 
   // если у какого-то раздела ещё нет ни одного месяца — создаём текущий и сохраняем именно этот раздел.
