@@ -1335,14 +1335,22 @@ function productsPanelData(){
   return rootState.sections[productsPanelSectionId] || {products:[]};
 }
 
-// Товары ВЫБРАННОЙ во вкладке "Товары" площадки, отсортированные по имени (кому ещё нужно
-// заполнить себестоимость — в начале списка, чтобы сразу бросались в глаза).
-function currentSectionProducts(){
+// Товары ВЫБРАННОЙ во вкладке "Товары" площадки — используется ТОЛЬКО для отрисовки самой
+// вкладки "Товары" (см. renderProducts ниже). Для расчётов, таблицы дней и "Итогов" нужен
+// activeSectionProducts() (см. дальше) — площадка шапки и площадка вкладки "Товары" могут
+// не совпадать, это две независимые друг от друга вещи.
+function productsPanelList(){
   return (productsPanelData().products||[]).slice().sort((a,b)=>{
     const aw = !((a.costHistory||[]).length), bw = !((b.costHistory||[]).length);
     if(aw!==bw) return aw? -1 : 1;
     return a.name.localeCompare(b.name, 'ru');
   });
+}
+
+// Товары АКТИВНОГО раздела шапки (state.products) — то, чем считается себестоимость
+// проданного, строится таблица дней и "Итоги". Не путать с productsPanelList() выше.
+function currentSectionProducts(){
+  return (state.products||[]).slice().sort((a,b)=>a.name.localeCompare(b.name, 'ru'));
 }
 
 /* ======================= COST LOOKUP (date-effective) ======================= */
@@ -1368,7 +1376,7 @@ function renderProducts(){
   const selectEl = document.getElementById('productsSectionSelect');
   if(selectEl) selectEl.value = productsPanelSectionId;
   const list = document.getElementById('productList');
-  const products = currentSectionProducts();
+  const products = productsPanelList();
   if(products.length===0){
     list.innerHTML = '<div class="empty-state" style="padding:14px 0;">Пока нет товаров на этой площадке — добавьте первый ниже.</div>';
     return;
@@ -1648,7 +1656,7 @@ function calcDayOzon(day){
   let cogs = 0;
   currentSectionProducts().forEach(p=>{
     const qty = num(day.salesQty[p.id]);
-    cogs += qty * getProductCostAt(p, day.date, rootState.activeSectionId);
+    cogs += qty * getProductCostAt(p, day.date);
   });
 
   const netToAccount = salesRub - reward - num(day.logistics) - num(day.fines) - num(day.storage)
@@ -1683,7 +1691,7 @@ function calcDayWB(day){
   let cogs = 0;
   currentSectionProducts().forEach(p=>{
     const qty = num(day.salesQty[p.id]);
-    cogs += qty * getProductCostAt(p, day.date, rootState.activeSectionId);
+    cogs += qty * getProductCostAt(p, day.date);
   });
 
   const logistics = num(day.logistics), fines = num(day.fines), storage = num(day.storage),
@@ -1725,7 +1733,7 @@ function calcDayYM(day){
   let cogs = 0;
   currentSectionProducts().forEach(p=>{
     const qty = num((day.salesQty||{})[p.id]);
-    cogs += qty * getProductCostAt(p, day.date, rootState.activeSectionId);
+    cogs += qty * getProductCostAt(p, day.date);
   });
 
   const netToAccount = salesRub - commission - logistics - fines - storage - paidAcceptance
@@ -1758,7 +1766,7 @@ function calcDaySite(day){
   let cogs = 0;
   currentSectionProducts().forEach(p=>{
     const qty = num(day.salesQty[p.id]);
-    cogs += qty * getProductCostAt(p, day.date, 'site');
+    cogs += qty * getProductCostAt(p, day.date);
   });
 
   const netToAccount = salesRub;
@@ -3418,7 +3426,7 @@ function renderSummaryOzon(month, t){
 
   const productRows = currentSectionProducts().map(p=>{
     const qty = t.salesByProduct[p.id]||0;
-    return `<div class="kpi"><div class="lbl">${escapeHtml(p.name)}</div><div class="val">${fmtQty(qty)} шт · ${fmt(qty*getCurrentProductCost(p, rootState.activeSectionId))} ₽</div></div>`;
+    return `<div class="kpi"><div class="lbl">${escapeHtml(p.name)}</div><div class="val">${fmtQty(qty)} шт · ${fmt(qty*getCurrentProductCost(p))} ₽</div></div>`;
   }).join('');
 
   const externalRows = EXTERNAL_FIELDS.map(([id,label])=>`
@@ -3478,7 +3486,7 @@ function renderSummaryWB(month, t){
 
   const productRows = currentSectionProducts().map(p=>{
     const qty = t.salesByProduct[p.id]||0;
-    return `<div class="kpi"><div class="lbl">${escapeHtml(p.name)}</div><div class="val">${fmtQty(qty)} шт · ${fmt(qty*getCurrentProductCost(p, rootState.activeSectionId))} ₽</div></div>`;
+    return `<div class="kpi"><div class="lbl">${escapeHtml(p.name)}</div><div class="val">${fmtQty(qty)} шт · ${fmt(qty*getCurrentProductCost(p))} ₽</div></div>`;
   }).join('');
 
   const externalRows = EXTERNAL_FIELDS.map(([id,label])=>`
@@ -3539,7 +3547,7 @@ function renderSummaryYM(month, t){
 
   const productRows = currentSectionProducts().map(p=>{
     const qty = t.salesByProduct[p.id]||0;
-    return `<div class="kpi"><div class="lbl">${escapeHtml(p.name)}</div><div class="val">${fmtQty(qty)} шт · ${fmt(qty*getCurrentProductCost(p, rootState.activeSectionId))} ₽</div></div>`;
+    return `<div class="kpi"><div class="lbl">${escapeHtml(p.name)}</div><div class="val">${fmtQty(qty)} шт · ${fmt(qty*getCurrentProductCost(p))} ₽</div></div>`;
   }).join('');
 
   const externalRows = EXTERNAL_FIELDS.map(([id,label])=>`
@@ -3601,7 +3609,7 @@ function renderSummarySite(month, t){
 
   const productRows = currentSectionProducts().map(p=>{
     const qty = t.salesByProduct[p.id]||0;
-    return `<div class="kpi"><div class="lbl">${escapeHtml(p.name)}</div><div class="val">${fmtQty(qty)} шт · ${fmt(qty*getCurrentProductCost(p, 'site'))} ₽</div></div>`;
+    return `<div class="kpi"><div class="lbl">${escapeHtml(p.name)}</div><div class="val">${fmtQty(qty)} шт · ${fmt(qty*getCurrentProductCost(p))} ₽</div></div>`;
   }).join('');
 
   const externalRows = EXTERNAL_FIELDS.map(([id,label])=>`
