@@ -105,6 +105,9 @@ input,select{font-family:var(--sans);}
 .section-btn.active.type-catalog{
   background:var(--navy);border-color:var(--navy);color:#fff;
 }
+.section-btn.active.type-overview{
+  background:#1b2338;border-color:#1b2338;color:#fff;
+}
 
 /* ---------- Tabs ---------- */
 .tabs{
@@ -204,6 +207,37 @@ input,select{font-family:var(--sans);}
 .selfbuy-cost-preview{font-family:var(--mono);font-size:15px;font-weight:650;color:var(--navy);padding:8px 0;}
 .selfbuy-form .save-btn{align-self:end;height:37px;}
 .selfbuy-day-info{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink-dim);}
+
+/* ---------- Сводка по всем магазинам ---------- */
+.ov-delta{margin-top:6px;font-size:11.5px;font-weight:650;font-family:var(--mono);}
+.ov-delta-up{color:var(--good);}
+.ov-delta-down{color:var(--bad);}
+.ov-table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px;}
+.ov-table th,.ov-table td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:right;font-family:var(--mono);}
+.ov-table th{font-family:var(--sans);text-transform:uppercase;font-size:10.5px;letter-spacing:.03em;color:var(--ink-dim);font-weight:650;text-align:right;}
+.ov-table th:first-child,.ov-table td:first-child{text-align:left;font-family:var(--sans);font-weight:600;color:var(--ink);}
+.ov-table tbody tr:hover{background:var(--bg);}
+.ov-cell-good{color:#0a5c37;font-weight:700;background:#8fe0b3;}
+.ov-cell-warn{color:#6b4400;font-weight:700;background:#ffc555;}
+.ov-cell-bad{color:#7a1620;font-weight:700;background:#f08a94;}
+.ov-legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:var(--ink-dim);}
+.ov-legend-item{display:flex;align-items:center;gap:6px;}
+.ov-dot{display:inline-block;width:12px;height:12px;border-radius:3px;box-shadow:inset 0 0 0 1px rgba(0,0,0,0.08);}
+.ov-dot-good{background:#16a34a;}
+.ov-dot-warn{background:#e6a300;}
+.ov-dot-bad{background:#e02424;}
+.ov-chart-metrics{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;}
+.ov-metric-btn{background:#fff;border:1px solid var(--line);border-radius:7px;padding:6px 12px;font-size:12.5px;color:var(--ink-dim);font-weight:600;}
+.ov-metric-btn:hover{border-color:var(--accent);color:var(--accent);}
+.ov-metric-btn.active{background:var(--navy);border-color:var(--navy);color:#fff;}
+.ov-chart-svg-wrap{margin-top:14px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;}
+.ov-svg{width:100%;height:260px;display:block;}
+.ov-chart-shops{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;}
+.ov-shop-toggle{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink);cursor:pointer;font-weight:400;}
+.ov-shop-toggle.off{color:var(--ink-dim);opacity:.55;}
+.ov-shop-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.ov-insights{margin:12px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px;}
+.ov-insights li{background:#f6f7fa;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:11px 14px;font-size:13px;color:var(--ink);}
 .missing-cost-backdrop{position:fixed;inset:0;background:rgba(20,24,35,0.55);display:flex;align-items:center;justify-content:center;z-index:500;padding:20px;}
 .missing-cost-modal{background:#fff;border-radius:12px;max-width:640px;width:100%;max-height:80vh;display:flex;flex-direction:column;padding:22px 24px;box-shadow:0 20px 50px rgba(0,0,0,0.25);}
 .missing-cost-modal h2{margin:0 0 8px;font-size:18px;}
@@ -339,22 +373,6 @@ tr.row-result td.metric-label{background:var(--c-result);}
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:14px;}
 
 /* ---------- Термометр расходов внутри площадки ---------- */
-.expense-thermometer{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-top:14px;}
-.et-total{display:flex;align-items:baseline;justify-content:space-between;}
-.et-total-label{font-size:11px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.03em;}
-.et-total-val{font-family:var(--mono);font-size:18px;font-weight:650;color:var(--navy);}
-.et-bar{display:flex;width:100%;height:14px;border-radius:7px;background:var(--bg);overflow:hidden;margin-top:14px;border:1px solid var(--line);}
-.et-seg{height:100%;cursor:pointer;}
-.et-seg:first-child{border-top-left-radius:6px;border-bottom-left-radius:6px;}
-.et-seg:last-child{border-top-right-radius:6px;border-bottom-right-radius:6px;}
-.et-legend{margin-top:14px;display:flex;flex-direction:column;gap:9px;}
-.et-legend-row{display:flex;align-items:center;gap:9px;font-size:11px;cursor:pointer;border-radius:6px;padding:3px 4px;margin:-3px -4px;}
-.et-legend-row:hover{background:var(--bg);}
-.et-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
-.et-legend-label{flex:1;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.03em;}
-.et-legend-val{font-family:var(--mono);font-weight:650;color:var(--navy);}
-.et-footnote{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink-dim);}
-.et-footnote b{color:var(--navy);font-weight:650;}
 .kpi{background:#f6f7fa;border:1px solid var(--line);border-radius:8px;padding:12px 14px;}
 .kpi .lbl{font-size:11px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.03em;}
 .kpi .val{font-family:var(--mono);font-size:18px;font-weight:650;margin-top:4px;}
@@ -427,7 +445,10 @@ h3.subhead{font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:
 
 
 <div class="section-bar-wrap">
-  <div class="section-bar" id="sectionBar"></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+    <button class="section-btn type-overview" id="overviewToggleBtn" onclick="toggleOverview()">Сводка</button>
+    <div class="section-bar" id="sectionBar"></div>
+  </div>
   <div style="display:flex;gap:8px;">
     <button class="section-btn type-catalog" id="productsToggleBtn" onclick="toggleProducts()">Товары</button>
     <button class="section-btn type-catalog" id="selfBuysToggleBtn" onclick="toggleSelfBuys()">Самовыкупы</button>
@@ -590,6 +611,16 @@ h3.subhead{font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:
       <div id="ddsImportReport"></div>
     </div>
     <div id="ddsKnownMappings"></div>
+  </div>
+</div>
+
+<div class="wrap" id="overviewPanel" style="display:none;">
+  <div class="panel">
+    <div class="products-header">
+      <h2>Сводка по всем магазинам</h2>
+      <select id="overviewMonthSelect" onchange="switchOverviewMonth(this.value)"></select>
+    </div>
+    <div id="overviewBody"></div>
   </div>
 </div>
 
@@ -1101,12 +1132,14 @@ function showView(mode){
   if(mode!=='section'){
     document.querySelectorAll('#sectionBar .section-btn').forEach(b=>b.classList.remove('active'));
   }
+  document.getElementById('overviewPanel').style.display = mode==='overview' ? 'block' : 'none';
   document.getElementById('productsPanel').style.display = mode==='products' ? 'block' : 'none';
   document.getElementById('selfBuysPanel').style.display = mode==='selfbuys' ? 'block' : 'none';
   document.getElementById('ddsPanel').style.display = mode==='dds' ? 'block' : 'none';
   document.getElementById('helpPanel').style.display = mode==='help' ? 'block' : 'none';
   document.getElementById('tabsBar').style.display = mode==='section' ? '' : 'none';
   document.getElementById('mainWrap').style.display = mode==='section' ? '' : 'none';
+  document.getElementById('overviewToggleBtn').classList.toggle('active', mode==='overview');
   document.getElementById('productsToggleBtn').classList.toggle('active', mode==='products');
   document.getElementById('selfBuysToggleBtn').classList.toggle('active', mode==='selfbuys');
   document.getElementById('ddsToggleBtn').classList.toggle('active', mode==='dds');
@@ -1202,6 +1235,7 @@ async function switchSection(id){
     try{ localStorage.setItem(LAST_SECTION_KEY, id); }catch(e){}
     showView('section'); // сразу показываем раздел (со старыми данными), чтобы не было пустого экрана
     await refreshSectionData(id); // и тут же подтягиваем актуальные данные из базы
+    await ensureCurrentMonthExists(id); // наступил новый календарный месяц — сам создаём его, без ручного клика
     populateMonthSelectors();
     renderTaxBox();
     renderDaily(); renderSummary();
@@ -1290,6 +1324,21 @@ function ensureMonth(key, sectionData, sectionType){
 function currentMonthKey(){
   const d = new Date();
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+}
+
+// Если у раздела ещё нет текущего календарного месяца — создаёт его сам, без ручного клика
+// "+ Добавить месяц" (наступил новый месяц — кто-то первый зашёл в раздел, и он сам появился).
+// Ничего не делает, если текущий месяц уже есть — не задваивает и не трогает существующие дни.
+async function ensureCurrentMonthExists(sectionId){
+  const sectionData = rootState.sections[sectionId];
+  if(!sectionData) return;
+  const key = currentMonthKey();
+  if(sectionData.months[key]) return; // уже есть — ничего делать не нужно
+  const type = getSectionConfig(sectionId).type;
+  const applyChange = (data)=>{ ensureMonth(key, data, type); };
+  applyChange(sectionData); // мгновенно локально — populateMonthSelectors() сама подберёт
+  // разумную дату по умолчанию (текущий месяц), ничего дополнительно выставлять не нужно.
+  await commitSectionChange(sectionId, applyChange); // и надёжно, поверх самой свежей версии раздела
 }
 
 /* ======================= SAVE BUTTON INDICATOR =======================
@@ -3677,6 +3726,403 @@ function computeMonthTotalsSite(key){
   return {...totals, avgDrr:null, salesByProduct, externalByField, marginality};
 }
 
+/* ======================= СВОДКА ПО ВСЕМ МАГАЗИНАМ =======================
+   Отдельная вкладка, не привязанная к конкретному разделу — агрегирует данные всех
+   10 магазинов (Ozon/WB/ЯМ × SEKAI/MELD/OOO MELD + Сайт) за один месяц. Все функции
+   расчёта по разделу (calcDay*, computeMonthTotals*) читают глобальные state/
+   rootState.activeSectionId — чтобы не переписывать их, здесь используется приём
+   "подменить на время расчёта, потом вернуть обратно" (withSectionState). */
+
+let overviewMonthKey = null;
+let overviewChartMetric = 'salesRub';
+let overviewChartShops = null; // Set — какие магазины сейчас показаны на графике
+
+function withSectionState(sectionId, fn){
+  const savedActiveId = rootState.activeSectionId;
+  const savedState = state;
+  rootState.activeSectionId = sectionId;
+  state = rootState.sections[sectionId];
+  try{
+    return fn();
+  } finally {
+    rootState.activeSectionId = savedActiveId;
+    state = savedState;
+  }
+}
+
+function computeMonthTotalsForSection(sectionId, monthKey){
+  return withSectionState(sectionId, ()=>{
+    const type = getSectionConfig(sectionId).type;
+    if(type==='ozon') return computeMonthTotalsOzon(monthKey);
+    if(type==='wb') return computeMonthTotalsWB(monthKey);
+    if(type==='ym') return computeMonthTotalsYM(monthKey);
+    return computeMonthTotalsSite(monthKey);
+  });
+}
+
+// Сумма расходов ВНУТРИ площадки — та же формула, что уже проверена и используется в
+// карточке "Расходы внутри X" в ключевых метриках каждого раздела (см. renderSummaryOzon/
+// WB/YM) — здесь просто переиспользуется для расчёта по любому разделу, не только активному.
+function platformExpenseRub(t, type){
+  if(type==='ozon') return num(t.reward)+num(t.logistics)+num(t.fines)+num(t.storage)+num(t.otherExpenses)+num(t.adSpend)+num(t.extraPayments);
+  if(type==='wb') return Math.abs(num(t.commission))+num(t.logistics)+num(t.fines)+num(t.storage)+num(t.paidAcceptance)+num(t.otherExpenses)+num(t.extraPayments);
+  if(type==='ym') return Math.abs(num(t.commission))+num(t.logistics)+num(t.fines)+num(t.storage)+num(t.paidAcceptance)+num(t.otherExpenses)+num(t.adSpend)+num(t.extraPayments);
+  return null; // у "Сайта" нет комиссии площадки
+}
+// То же самое, но для ОДНОГО дня (для графика динамики) — day берём напрямую (сырые поля),
+// commission/adSpend — из уже посчитанного calcDay(day), т.к. у WB/ЯМ они не всегда сырые.
+function platformExpenseForDay(day, c, type){
+  if(type==='ozon') return num(day.reward)+num(day.logistics)+num(day.fines)+num(day.storage)+num(day.otherExpenses)+num(c.adSpend)+num(day.extraPayments);
+  if(type==='wb') return Math.abs(num(c.commission))+num(day.logistics)+num(day.fines)+num(day.storage)+num(day.paidAcceptance)+num(day.otherExpenses)+num(day.extraPayments);
+  if(type==='ym') return Math.abs(num(day.commission))+num(day.logistics)+num(day.fines)+num(day.storage)+num(day.paidAcceptance)+num(day.otherExpenses)+num(c.adSpend)+num(day.extraPayments);
+  return null;
+}
+
+function computeDailySeriesForSection(sectionId, monthKey){
+  return withSectionState(sectionId, ()=>{
+    const type = getSectionConfig(sectionId).type;
+    const month = ensureMonth(monthKey);
+    return month.days.map(day=>{
+      const c = calcDay(day);
+      const expenseRub = platformExpenseForDay(day, c, type);
+      const expensePct = (expenseRub!==null && c.salesRub) ? expenseRub/c.salesRub*100 : null;
+      const marginality = c.salesRub ? c.ebitda/c.salesRub*100 : null;
+      const drrFrac = (c.drr===null || c.drr===undefined) ? null : c.drr;
+      return {
+        date: day.date,
+        salesRub: c.salesRub,
+        netProfit: c.netProfit,
+        marginality,
+        expensePct,
+        drr: drrFrac===null ? null : drrFrac*100,
+      };
+    });
+  });
+}
+
+function prevMonthKey(key){
+  const [y,m] = key.split('-').map(Number);
+  const d = new Date(Date.UTC(y, m-2, 1));
+  return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0');
+}
+
+function collectAllMonthKeys(){
+  const keys = new Set();
+  SECTIONS_CONFIG.forEach(cfg=>{
+    const data = rootState.sections[cfg.id];
+    if(data && data.months) Object.keys(data.months).forEach(k=>keys.add(k));
+  });
+  keys.add(currentMonthKey());
+  return Array.from(keys).sort().reverse();
+}
+
+// Относительное изменение в % (для рублёвых/количественных показателей).
+function pctChange(curr, prev){
+  if(prev===null || prev===undefined || prev===0) return null;
+  if(curr===null || curr===undefined) return null;
+  return (curr-prev)/Math.abs(prev)*100;
+}
+// Абсолютная разница в процентных пунктах (для показателей, которые УЖЕ проценты —
+// маржинальность/расходы площадки/ДРР: "было 29%, стало 31%" — это +2 п.п., а не +6,9%).
+function ppDelta(curr, prev){
+  if(curr===null||prev===null||curr===undefined||prev===undefined) return null;
+  return curr-prev;
+}
+
+// Собирает данные по ВСЕМ магазинам за месяц + предыдущий месяц (для дельт), и агрегаты
+// по всей сети. Проценты в агрегатах считаются от суммарных рублей (не как среднее
+// процентов по магазинам) — по явной просьбе.
+function buildOverviewData(monthKey){
+  const prevKey = prevMonthKey(monthKey);
+  const perShop = SECTIONS_CONFIG.map(cfg=>{
+    const t = computeMonthTotalsForSection(cfg.id, monthKey);
+    const tPrev = computeMonthTotalsForSection(cfg.id, prevKey);
+    const expenseRub = platformExpenseRub(t, cfg.type);
+    const expensePct = (expenseRub!==null && t.salesRub) ? expenseRub/t.salesRub*100 : null;
+    const expenseRubPrev = platformExpenseRub(tPrev, cfg.type);
+    const expensePctPrev = (expenseRubPrev!==null && tPrev.salesRub) ? expenseRubPrev/tPrev.salesRub*100 : null;
+    return {id:cfg.id, label:cfg.label, type:cfg.type, t, tPrev, expenseRub, expensePct, expenseRubPrev, expensePctPrev};
+  });
+
+  const sum = (list, getter) => list.reduce((s,x)=>s+num(getter(x)),0);
+  const withPlatformExpense = perShop.filter(s=>s.type!=='site');
+  // Для ДРР по сети берём то же "числитель по рекламе", что уже используется в собственном
+  // avgDrr каждого раздела: у Ozon/ЯМ это adSpend, у WB — adsMemo (см. calcDayWB/YM).
+  const adNumerator = s => s.type==='wb' ? num(s.t.adsMemo) : num(s.t.adSpend);
+  const adNumeratorPrev = s => s.type==='wb' ? num(s.tPrev.adsMemo) : num(s.tPrev.adSpend);
+
+  const agg = {
+    salesRub: sum(perShop, s=>s.t.salesRub),
+    orderedRub: sum(perShop, s=>s.t.orderedRub),
+    orderedQty: sum(perShop, s=>s.t.orderedQty),
+    netProfit: sum(perShop, s=>s.t.netProfit),
+    ebitda: sum(perShop, s=>s.t.ebitda),
+    cogs: sum(perShop, s=>s.t.cogs),
+    platformExpenseRub: sum(withPlatformExpense, s=>s.expenseRub),
+    platformExpenseSalesRub: sum(withPlatformExpense, s=>s.t.salesRub),
+    adSpendTotal: sum(withPlatformExpense, adNumerator),
+    orderedRubForDrr: sum(withPlatformExpense, s=>s.t.orderedRub),
+  };
+  agg.marginality = agg.salesRub ? agg.ebitda/agg.salesRub*100 : null;
+  agg.platformExpensePct = agg.platformExpenseSalesRub ? agg.platformExpenseRub/agg.platformExpenseSalesRub*100 : null;
+  agg.avgDrr = agg.orderedRubForDrr ? agg.adSpendTotal/agg.orderedRubForDrr*100 : null;
+
+  const aggPrev = {
+    salesRub: sum(perShop, s=>s.tPrev.salesRub),
+    orderedRub: sum(perShop, s=>s.tPrev.orderedRub),
+    orderedQty: sum(perShop, s=>s.tPrev.orderedQty),
+    netProfit: sum(perShop, s=>s.tPrev.netProfit),
+    ebitda: sum(perShop, s=>s.tPrev.ebitda),
+    cogs: sum(perShop, s=>s.tPrev.cogs),
+    platformExpenseRub: sum(withPlatformExpense, s=>s.expenseRubPrev),
+    platformExpenseSalesRub: sum(withPlatformExpense, s=>s.tPrev.salesRub),
+    adSpendTotal: sum(withPlatformExpense, adNumeratorPrev),
+    orderedRubForDrr: sum(withPlatformExpense, s=>s.tPrev.orderedRub),
+  };
+  aggPrev.marginality = aggPrev.salesRub ? aggPrev.ebitda/aggPrev.salesRub*100 : null;
+  aggPrev.platformExpensePct = aggPrev.platformExpenseSalesRub ? aggPrev.platformExpenseRub/aggPrev.platformExpenseSalesRub*100 : null;
+  aggPrev.avgDrr = aggPrev.orderedRubForDrr ? aggPrev.adSpendTotal/aggPrev.orderedRubForDrr*100 : null;
+
+  return {perShop, agg, aggPrev, monthKey, prevKey};
+}
+
+function renderOverviewTopKpis(agg, aggPrev){
+  const rows = [
+    {label:'Продажи', val: fmt(agg.salesRub)+' ₽', delta: pctChange(agg.salesRub, aggPrev.salesRub), unit:'%'},
+    {label:'Заказано, шт', val: fmtQty(agg.orderedQty), delta: pctChange(agg.orderedQty, aggPrev.orderedQty), unit:'%'},
+    {label:'Чистая прибыль', val: fmt(agg.netProfit)+' ₽', delta: pctChange(agg.netProfit, aggPrev.netProfit), unit:'%'},
+    {label:'Маржинальность', val: agg.marginality===null?'—':fmt(agg.marginality)+'%', delta: ppDelta(agg.marginality, aggPrev.marginality), unit:' п.п.'},
+    {label:'Расходы площадок, %', val: agg.platformExpensePct===null?'—':fmt(agg.platformExpensePct)+'%', delta: ppDelta(agg.platformExpensePct, aggPrev.platformExpensePct), unit:' п.п.'},
+    {label:'ДРР', val: agg.avgDrr===null?'—':fmt(agg.avgDrr)+'%', delta: ppDelta(agg.avgDrr, aggPrev.avgDrr), unit:' п.п.'},
+    {label:'Себестоимость проданного', val: fmt(agg.cogs)+' ₽', delta: pctChange(agg.cogs, aggPrev.cogs), unit:'%'},
+  ];
+  return `<div class="kpi-grid">${rows.map(r=>{
+    let deltaHtml = '';
+    if(r.delta!==null && !isNaN(r.delta)){
+      const sign = r.delta>=0?'+':'';
+      const cls = r.delta>=0 ? 'ov-delta-up' : 'ov-delta-down';
+      deltaHtml = `<div class="ov-delta ${cls}">${sign}${fmt(r.delta)}${r.unit}</div>`;
+    }
+    return `<div class="kpi"><div class="lbl">${escapeHtml(r.label)}</div><div class="val">${r.val}</div>${deltaHtml}</div>`;
+  }).join('')}</div>`;
+}
+
+function renderOverviewTable(perShop){
+  const rows = perShop.map(s=>{
+    const marginality = s.t.marginality; // фракция (0.29 = 29%) или null
+    const marginCls = marginality===null ? '' : (marginality<0.05?'ov-cell-bad':(marginality<0.20?'ov-cell-warn':'ov-cell-good'));
+    const profitCls = s.t.netProfit<0 ? 'ov-cell-bad' : marginCls; // прибыль красим по той же логике, что и маржинальность
+    const expCls = s.expensePct===null ? '' : (s.expensePct>35?'ov-cell-bad':(s.expensePct>=25?'ov-cell-warn':'ov-cell-good'));
+    const drrFrac = s.t.avgDrr;
+    const drrPct = (drrFrac===null||drrFrac===undefined) ? null : drrFrac*100;
+    const drrCls = drrPct===null ? '' : (drrPct>20?'ov-cell-bad':(drrPct>=10?'ov-cell-warn':'ov-cell-good'));
+    return `<tr>
+      <td>${escapeHtml(s.label)}</td>
+      <td>${fmt(s.t.salesRub)} ₽</td>
+      <td class="${profitCls}">${fmt(s.t.netProfit)} ₽</td>
+      <td class="${marginCls}">${marginality===null?'—':fmt(marginality*100)+'%'}</td>
+      <td class="${expCls}">${s.expensePct===null?'—':fmt(s.expensePct)+'%'}</td>
+      <td class="${drrCls}">${drrPct===null?'—':fmt(drrPct)+'%'}</td>
+      <td>${fmtQty(s.t.orderedQty||0)}</td>
+    </tr>`;
+  }).join('');
+  return `<table class="ov-table">
+    <thead><tr><th>Магазин</th><th>Продажи</th><th>Чистая прибыль</th><th>Маржинальность</th><th>Расходы площадки</th><th>ДРР</th><th>Заказано, шт</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="ov-legend"><span class="ov-legend-item"><span class="ov-dot ov-dot-good"></span>хороший результат</span><span class="ov-legend-item"><span class="ov-dot ov-dot-warn"></span>требует внимания</span><span class="ov-legend-item"><span class="ov-dot ov-dot-bad"></span>убыток / высокие расходы</span></div>`;
+}
+
+const OVERVIEW_METRICS = [
+  {id:'salesRub', label:'Продажи', unit:'₽'},
+  {id:'netProfit', label:'Чистая прибыль', unit:'₽'},
+  {id:'marginality', label:'Маржинальность', unit:'%'},
+  {id:'expensePct', label:'Расходы площадки', unit:'%'},
+  {id:'drr', label:'ДРР', unit:'%'},
+];
+const OVERVIEW_SHOP_COLORS = ['#3b82f6','#7c3aed','#d97706','#1e8a6e','#e5646b','#0891b2','#a855f7','#65a30d','#c026d3','#475569'];
+
+function renderOverviewChartSection(monthKey){
+  if(!overviewChartShops) overviewChartShops = new Set(SECTIONS_CONFIG.map(c=>c.id));
+  const seriesByShop = {};
+  SECTIONS_CONFIG.forEach((cfg,i)=>{
+    seriesByShop[cfg.id] = { label: cfg.label, color: OVERVIEW_SHOP_COLORS[i%OVERVIEW_SHOP_COLORS.length], data: computeDailySeriesForSection(cfg.id, monthKey) };
+  });
+  window.__overviewSeriesByShop = seriesByShop;
+  return `<div id="ovChartWrap">${buildOverviewChartHtml(seriesByShop)}</div>`;
+}
+
+function buildOverviewChartHtml(seriesByShop){
+  const metricCfg = OVERVIEW_METRICS.find(m=>m.id===overviewChartMetric);
+  const metricButtons = OVERVIEW_METRICS.map(m=>`<button class="ov-metric-btn ${m.id===overviewChartMetric?'active':''}" onclick="setOverviewChartMetric('${m.id}')">${escapeHtml(m.label)}</button>`).join('');
+  const shopToggles = SECTIONS_CONFIG.map(cfg=>{
+    const on = overviewChartShops.has(cfg.id);
+    const color = seriesByShop[cfg.id].color;
+    return `<label class="ov-shop-toggle ${on?'':'off'}"><input type="checkbox" ${on?'checked':''} onchange="toggleOverviewChartShop('${cfg.id}')"><span class="ov-shop-dot" style="background:${color}"></span>${escapeHtml(cfg.label)}</label>`;
+  }).join('');
+  const svg = buildOverviewSvg(seriesByShop, metricCfg);
+  return `
+    <div class="ov-chart-metrics">${metricButtons}</div>
+    <div class="ov-chart-svg-wrap">${svg}</div>
+    <div class="ov-chart-shops">${shopToggles}</div>`;
+}
+
+function fmtCompact(v){
+  if(Math.abs(v)>=1000) return Math.round(v/1000)+'k';
+  return fmt(v);
+}
+
+function buildOverviewSvg(seriesByShop, metricCfg){
+  const W = 900, H = 260, padL = 46, padR = 12, padT = 14, padB = 24;
+  const activeSeries = Object.entries(seriesByShop).filter(([id])=>overviewChartShops.has(id));
+  const allPoints = [];
+  activeSeries.forEach(([id, s])=>{ s.data.forEach(d=>{ const v = d[metricCfg.id]; if(v!==null && v!==undefined) allPoints.push(v); }); });
+  let minV = allPoints.length ? Math.min(0, ...allPoints) : 0;
+  let maxV = allPoints.length ? Math.max(0, ...allPoints) : 1;
+  if(minV===maxV) maxV = minV+1;
+  const dayCount = activeSeries.length ? activeSeries[0][1].data.length : 30;
+  const xScale = i => padL + (dayCount<=1?0:(i/(dayCount-1))*(W-padL-padR));
+  const yScale = v => padT + (1-((v-minV)/(maxV-minV)))*(H-padT-padB);
+  const zeroY = yScale(0);
+
+  const gridLines = [0,0.25,0.5,0.75,1].map(f=>{
+    const v = minV + f*(maxV-minV);
+    const y = yScale(v);
+    return `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="var(--line)" stroke-width="1"/><text x="2" y="${y+4}" font-size="10" fill="var(--ink-dim)">${fmtCompact(v)}</text>`;
+  }).join('');
+
+  const linesHtml = activeSeries.map(([id,s])=>{
+    const pts = s.data.map((d,i)=>{
+      const v = d[metricCfg.id];
+      if(v===null||v===undefined) return null;
+      return `${xScale(i).toFixed(1)},${yScale(v).toFixed(1)}`;
+    }).filter(Boolean).join(' ');
+    if(!pts) return '';
+    return `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2"/>`;
+  }).join('');
+
+  if(activeSeries.length===0){
+    return `<div class="empty-state" style="padding:20px 0;">Отметьте хотя бы один магазин ниже, чтобы увидеть график.</div>`;
+  }
+  return `<svg viewBox="0 0 ${W} ${H}" class="ov-svg" preserveAspectRatio="none">
+    ${gridLines}
+    <line x1="${padL}" y1="${zeroY}" x2="${W-padR}" y2="${zeroY}" stroke="var(--ink-dim)" stroke-width="1" stroke-dasharray="3,3"/>
+    ${linesHtml}
+  </svg>`;
+}
+
+function setOverviewChartMetric(metricId){
+  overviewChartMetric = metricId;
+  const wrap = document.getElementById('ovChartWrap');
+  if(wrap) wrap.innerHTML = buildOverviewChartHtml(window.__overviewSeriesByShop);
+}
+function toggleOverviewChartShop(id){
+  if(overviewChartShops.has(id)) overviewChartShops.delete(id); else overviewChartShops.add(id);
+  const wrap = document.getElementById('ovChartWrap');
+  if(wrap) wrap.innerHTML = buildOverviewChartHtml(window.__overviewSeriesByShop);
+}
+
+// Правило-ориентированные текстовые выводы — считаются каждый раз заново из реальных
+// цифр (не заготовленные фразы), пороги (2 п.п., 3%, 25% доли прибыли и т.д.) — разумные
+// значения по умолчанию, можно попросить изменить.
+function generateOverviewInsights(perShop, agg, aggPrev){
+  const insights = [];
+
+  const profitable = perShop.filter(s=>s.t.netProfit>0);
+  const totalPositiveProfit = profitable.reduce((sum,s)=>sum+s.t.netProfit,0);
+  if(totalPositiveProfit>0){
+    const top = profitable.reduce((a,b)=> b.t.netProfit>a.t.netProfit?b:a, profitable[0]);
+    const share = top.t.netProfit/totalPositiveProfit*100;
+    if(share>=25){
+      insights.push(`«${top.label}» принёс ${fmt(share)}% суммарной прибыли (среди магазинов, которые сработали в плюс).`);
+    }
+  }
+
+  perShop.forEach(s=>{
+    if(s.expensePct===null || s.expensePctPrev===null) return;
+    const delta = s.expensePct - s.expensePctPrev;
+    if(delta>=2) insights.push(`У «${s.label}» расходы площадки выросли на ${fmt(delta)} п.п. по сравнению с прошлым месяцем.`);
+    else if(delta<=-2) insights.push(`У «${s.label}» расходы площадки снизились на ${fmt(Math.abs(delta))} п.п. по сравнению с прошлым месяцем.`);
+  });
+
+  const salesChange = pctChange(agg.salesRub, aggPrev.salesRub);
+  const profitChange = pctChange(agg.netProfit, aggPrev.netProfit);
+  if(salesChange!==null && profitChange!==null){
+    if(salesChange>3 && profitChange<-3) insights.push('Продажи выросли, но чистая прибыль снизилась — стоит проверить расходы и себестоимость.');
+    else if(salesChange<-3 && profitChange>3) insights.push('Продажи снизились, но чистая прибыль выросла — вероятно, помогла оптимизация расходов.');
+  }
+
+  if(profitChange!==null && profitChange<-3){
+    const causes = [
+      {label:'реклама', value: agg.adSpendTotal - aggPrev.adSpendTotal},
+      {label:'себестоимость', value: agg.cogs - aggPrev.cogs},
+      {label:'расходы площадок', value: agg.platformExpenseRub - aggPrev.platformExpenseRub},
+    ].filter(c=>c.value>0);
+    if(causes.length){
+      const biggest = causes.reduce((a,b)=>b.value>a.value?b:a, causes[0]);
+      insights.push(`Основная причина снижения прибыли — ${biggest.label} (+${fmt(biggest.value)} ₽ к прошлому месяцу).`);
+    }
+  }
+
+  const lossShops = perShop.filter(s=>s.t.netProfit<0);
+  if(lossShops.length>0){
+    const word = lossShops.length===1?'магазин работает':(lossShops.length<5?'магазина работают':'магазинов работают');
+    insights.push(`${lossShops.length} ${word} в убыток: ${lossShops.map(s=>s.label).join(', ')}.`);
+  }
+
+  return insights;
+}
+
+async function toggleOverview(){
+  const opening = document.getElementById('overviewPanel').style.display !== 'block';
+  if(opening){
+    // Подтягиваем свежие данные по ВСЕМ магазинам перед показом — не только по активному.
+    await Promise.all(SECTIONS_CONFIG.map(cfg=>refreshSectionData(cfg.id)));
+    if(!overviewMonthKey) overviewMonthKey = currentMonthKey();
+    populateOverviewMonthSelect();
+    overviewChartShops = null; // пересоздастся со всеми площадками включёнными
+    renderOverview();
+  }
+  showView(opening ? 'overview' : 'section');
+}
+
+function populateOverviewMonthSelect(){
+  const sel = document.getElementById('overviewMonthSelect');
+  if(!sel) return;
+  const keys = collectAllMonthKeys();
+  sel.innerHTML = keys.map(k=>`<option value="${k}">${monthLabel(k)}</option>`).join('');
+  sel.value = overviewMonthKey;
+}
+
+function switchOverviewMonth(key){
+  overviewMonthKey = key;
+  renderOverview();
+}
+
+function renderOverview(){
+  const body = document.getElementById('overviewBody');
+  if(!body) return;
+  const data = buildOverviewData(overviewMonthKey);
+  const kpisHtml = renderOverviewTopKpis(data.agg, data.aggPrev);
+  const tableHtml = renderOverviewTable(data.perShop);
+  const chartHtml = renderOverviewChartSection(overviewMonthKey);
+  const insights = generateOverviewInsights(data.perShop, data.agg, data.aggPrev);
+  const insightsHtml = insights.length
+    ? `<ul class="ov-insights">${insights.map(i=>`<li>${escapeHtml(i)}</li>`).join('')}</ul>`
+    : `<div class="empty-state" style="padding:14px 0;">Пока недостаточно данных для выводов.</div>`;
+
+  body.innerHTML = `
+    <h3 class="subhead">За месяц — по всем магазинам</h3>
+    ${kpisHtml}
+    <h3 class="subhead" style="margin-top:24px;">Сравнение магазинов</h3>
+    ${tableHtml}
+    <h3 class="subhead" style="margin-top:24px;">Динамика по дням</h3>
+    ${chartHtml}
+    <h3 class="subhead" style="margin-top:24px;">Автоматические выводы</h3>
+    ${insightsHtml}
+  `;
+}
+
 function renderSummary(){
   populateMonthSelectors();
   const key = document.getElementById('monthSelectSum').value;
@@ -3737,7 +4183,6 @@ function renderSummaryOzon(month, t){
     ${currentSectionProducts().length? `<h3 class="subhead">Продажи по товарам</h3><div class="kpi-grid">${productRows}</div>` : ''}
 
     <h3 class="subhead">Расходы внутри Ozon за месяц</h3>
-    ${renderExpenseThermometer(t, 'ozon')}
     <div class="kpi-grid">
       <div class="kpi"><div class="lbl">Вознаграждение</div><div class="val">${fmt(t.reward)}</div></div>
       <div class="kpi"><div class="lbl">Логистика</div><div class="val">${fmt(t.logistics)}</div></div>
@@ -3799,7 +4244,6 @@ function renderSummaryWB(month, t){
     ${currentSectionProducts().length? `<h3 class="subhead">Выкуплено по товарам</h3><div class="kpi-grid">${productRows}</div>` : ''}
 
     <h3 class="subhead">Расходы внутри ВБ за месяц</h3>
-    ${renderExpenseThermometer(t, 'wb')}
     <div class="kpi-grid">
       <div class="kpi"><div class="lbl">Выкуплено (после СПП и комиссии)</div><div class="val">${fmt(t.boughtNetRub)}</div></div>
       <div class="kpi"><div class="lbl">Комиссия WB (авто)</div><div class="val">${fmt(Math.abs(t.commission))}</div></div>
@@ -3862,7 +4306,6 @@ function renderSummaryYM(month, t){
     ${currentSectionProducts().length? `<h3 class="subhead">Продажи по товарам</h3><div class="kpi-grid">${productRows}</div>` : ''}
 
     <h3 class="subhead">Расходы внутри ЯМ за месяц</h3>
-    ${renderExpenseThermometer(t, 'ym')}
     <div class="kpi-grid">
       <div class="kpi"><div class="lbl">Комиссия ЯМ</div><div class="val">${fmt(Math.abs(t.commission))}</div></div>
       <div class="kpi"><div class="lbl">Логистика</div><div class="val">${fmt(t.logistics)}</div></div>
@@ -3939,73 +4382,8 @@ function wfStepPct(lbl, val, cls=''){
 // Прочее — туда суммируется всё, что не попало в первые три), каждая статья — это доля
 // от ПРОДАЖИ (не от суммы расходов), поэтому полоса заполнена не на всю ширину — остаток
 // справа визуально показывает, сколько от продажи остаётся ПОСЛЕ этих расходов.
-function renderExpenseThermometer(t, type){
-  if(!t.salesRub) return ''; // нет продаж в этом месяце — нечего показывать
-  let buckets;
-  if(type==='ozon'){
-    buckets = [
-      {label:'Вознаграждение', value:t.reward, color:'var(--et-c1)'},
-      {label:'Реклама', value:t.adSpend, color:'var(--et-c2)'},
-      {label:'Логистика', value:t.logistics, color:'var(--et-c3)'},
-      {label:'Прочие расходы', value:t.fines+t.storage+t.otherExpenses+t.extraPayments, color:'var(--et-c4)'},
-    ];
-  } else if(type==='wb'){
-    buckets = [
-      {label:'Комиссия WB', value:Math.abs(t.commission), color:'var(--et-c1)'},
-      {label:'В т.ч. реклама', value:t.adsMemo, color:'var(--et-c2)'},
-      {label:'Логистика', value:t.logistics, color:'var(--et-c3)'},
-      {label:'Прочие расходы', value:t.fines+t.storage+t.paidAcceptance+t.extraPayments+Math.max(0,t.otherExpenses-t.adsMemo), color:'var(--et-c4)'},
-    ];
-  } else if(type==='ym'){
-    buckets = [
-      {label:'Комиссия ЯМ', value:Math.abs(t.commission), color:'var(--et-c1)'},
-      {label:'Реклама', value:t.adSpend, color:'var(--et-c2)'},
-      {label:'Логистика', value:t.logistics, color:'var(--et-c3)'},
-      {label:'Прочие расходы', value:t.fines+t.storage+t.paidAcceptance+t.extraPayments+t.otherExpenses, color:'var(--et-c4)'},
-    ];
-  } else {
-    return '';
-  }
-  // Показываем только те статьи, где в ЭТОМ месяце реально есть расход — если в другом
-  // месяце появится (или пропадёт) какая-то статья, легенда сама подстроится, т.к. buckets
-  // считается заново на каждый рендер из данных именно текущего выбранного месяца.
-  const visible = buckets.filter(b=>b.value>0.004); // с небольшим запасом от погрешности плавающей точки
-  if(visible.length===0) return '';
-  const totalExpense = visible.reduce((sum,b)=>sum+b.value,0);
-  const totalPctOfSales = totalExpense/t.salesRub*100;
-  const footnoteId = 'etFootnote_'+type;
-
-  // Полоса закрашена ПОЛНОСТЬЮ — ширина сегмента здесь считается от суммы расходов (не от
-  // продажи), чтобы вся полоса была занята статьями. Проценты в легенде и в нижней строке
-  // при этом по-прежнему показывают долю ОТ ПРОДАЖИ (это отдельная, более полезная цифра).
-  const segmentsHtml = visible.map(b=>{
-    const widthPct = b.value/totalExpense*100;
-    const salesPct = b.value/t.salesRub*100;
-    return `<div class="et-seg" style="width:${widthPct}%;background:${b.color}" onmouseenter="updateThermoFootnote('${footnoteId}','${escapeHtml(b.label)}',${b.value},${salesPct})"></div>`;
-  }).join('');
-  const legendHtml = visible.map(b=>{
-    const salesPct = b.value/t.salesRub*100;
-    return `<div class="et-legend-row" onmouseenter="updateThermoFootnote('${footnoteId}','${escapeHtml(b.label)}',${b.value},${salesPct})"><span class="et-dot" style="background:${b.color}"></span><span class="et-legend-label">${escapeHtml(b.label)}</span><span class="et-legend-val">${fmt(salesPct)}%</span></div>`;
-  }).join('');
-  // По умолчанию (до наведения) нижняя строка показывает самую крупную статью.
-  const biggest = visible.reduce((a,b)=> (!a||b.value>a.value) ? b : a, null);
-  const biggestPct = biggest.value/t.salesRub*100;
-  return `
-  <div class="expense-thermometer">
-    <div class="et-total"><span class="et-total-label">Расходы площадки, %</span><span class="et-total-val">${fmt(totalPctOfSales)}%</span></div>
-    <div class="et-bar">${segmentsHtml}</div>
-    <div class="et-legend">${legendHtml}</div>
-    <div class="et-footnote" id="${footnoteId}"><b>${escapeHtml(biggest.label)}:</b> ${fmt(biggest.value)} ₽ · ${fmt(biggestPct)}% от продаж</div>
-  </div>`;
-}
-
-// Наводя курсор на сегмент полосы или строку легенды — обновляем нижнюю строку этой
-// конкретной статьёй (интерактивная подсказка, без выхода за пределы простого HTML/CSS).
-function updateThermoFootnote(footnoteId, label, value, pct){
-  const el = document.getElementById(footnoteId);
-  if(el) el.innerHTML = `<b>${escapeHtml(label)}:</b> ${fmt(value)} ₽ · ${fmt(pct)}% от продаж`;
-}
-
+// Цвет закреплён за КОНКРЕТНОЙ статьёй расхода (не за позицией в списке), чтобы, например,
+// "Штрафы" всегда были одного и того же цвета что на Ozon, что на WB, что на ЯМ.
 function fmtQty(v){
   if(v===null || v===undefined || isNaN(v)) return '—';
   return Number(v).toLocaleString('ru-RU', {maximumFractionDigits:0});
@@ -4084,17 +4462,12 @@ async function startApp(){
   await loadDdsImportMap();
   await migrateProductsFromLegacySharedCatalog(); // одноразовый перенос себестоимости в списки по площадкам (см. выше)
 
-  // если у какого-то раздела ещё нет ни одного месяца — создаём текущий и сохраняем именно этот раздел.
-  // Последовательно, не Promise.all: при первом запуске на пустом хранилище это может быть сразу
-  // 7 разделов, и параллельный залп записей иногда упирается в лимит одновременных запросов
-  // тестового window.storage ("Internal server error").
-  for(const cfg of SECTIONS_CONFIG){
-    if(rootState.loadFailed && rootState.loadFailed.has(cfg.id)) continue; // не трогаем — данные не загрузились, а не "раздел пуст"
-    const sectionData = rootState.sections[cfg.id];
-    if(Object.keys(sectionData.months).length===0){
-      ensureMonth(currentMonthKey(), sectionData, cfg.type);
-      await save(cfg.id);
-    }
+  // Если у активного раздела ещё нет текущего календарного месяца (совсем новый раздел,
+  // или просто наступил новый месяц) — создаём его сам, без ручного клика "+ Добавить
+  // месяц". Остальные разделы получат свой текущий месяц точно так же — лениво, в момент,
+  // когда кто-то в них реально переключится (см. switchSection), а не все разом сейчас.
+  if(!(rootState.loadFailed && rootState.loadFailed.has(rootState.activeSectionId))){
+    await ensureCurrentMonthExists(rootState.activeSectionId);
   }
   state = rootState.sections[rootState.activeSectionId];
 
