@@ -153,9 +153,12 @@ input,select{font-family:var(--sans);}
 .pc-head{display:flex;align-items:center;justify-content:space-between;gap:10px;}
 .pc-name{font-size:13.5px;font-weight:640;}
 .pc-del{background:none;border:none;color:var(--bad);font-size:16px;line-height:1;padding:2px 6px;}
-.pc-cost-row{display:flex;align-items:baseline;gap:8px;margin-top:4px;flex-wrap:wrap;}
+.pc-cost-row{display:flex;align-items:baseline;gap:8px;margin-top:8px;flex-wrap:wrap;}
 .pc-cost-now{font-family:var(--mono);font-size:14px;font-weight:650;color:var(--navy);}
 .pc-cost-since{font-size:11.5px;color:var(--ink-dim);}
+.pc-sku-row{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);}
+.pc-sku-row label{display:block;font-size:11.5px;color:var(--ink-dim);margin-bottom:4px;}
+.pc-sku-row input{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-size:12px;font-family:var(--mono);}
 .pc-toggle{
   background:none;border:1px solid var(--line);border-radius:6px;padding:5px 10px;
   font-size:11.5px;color:var(--accent);font-weight:560;margin-top:8px;
@@ -178,8 +181,25 @@ input,select{font-family:var(--sans);}
 .pc-article-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
 .pc-article-row label{font-size:11.5px;color:var(--ink-dim);min-width:170px;}
 .pc-article-row input{border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-size:12px;font-family:var(--mono);width:160px;}
+.pc-badge-warn{display:inline-block;background:#fff2df;color:#a8641a;border:1px solid #f0c98a;border-radius:6px;padding:2px 7px;font-size:10.5px;font-weight:650;margin-left:6px;}
+.pc-name-input{border:1px solid transparent;border-radius:6px;padding:3px 6px;font-size:13.5px;font-weight:640;background:transparent;font-family:var(--sans);min-width:120px;}
+.pc-name-input:hover{border-color:var(--line);}
+.pc-name-input:focus{border-color:var(--accent);outline:none;background:#fff;}
 
 .add-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.products-header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.products-header h2{margin:0;}
+#productsSectionSelect{border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:13px;font-family:var(--sans);background:#fff;}
+.missing-cost-backdrop{position:fixed;inset:0;background:rgba(20,24,35,0.55);display:flex;align-items:center;justify-content:center;z-index:500;padding:20px;}
+.missing-cost-modal{background:#fff;border-radius:12px;max-width:640px;width:100%;max-height:80vh;display:flex;flex-direction:column;padding:22px 24px;box-shadow:0 20px 50px rgba(0,0,0,0.25);}
+.missing-cost-modal h2{margin:0 0 8px;font-size:18px;}
+.missing-cost-list{overflow-y:auto;margin-top:10px;flex:1;}
+.missing-cost-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);}
+.missing-cost-row:last-child{border-bottom:none;}
+.missing-cost-info{display:flex;flex-direction:column;gap:2px;}
+.missing-cost-name{font-size:13.5px;font-weight:640;color:var(--navy);}
+.missing-cost-platform{font-size:11.5px;color:var(--ink-dim);}
+.missing-cost-footer{margin-top:16px;display:flex;justify-content:flex-end;}
 .add-row input{
   border:1px solid var(--line);border-radius:7px;padding:8px 10px;font-size:13px;
 }
@@ -347,6 +367,17 @@ h3.subhead{font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:
 
 <div id="mainApp" style="display:none;">
 
+<div id="missingCostBackdrop" class="missing-cost-backdrop" style="display:none;">
+  <div class="missing-cost-modal">
+    <h2>Не заполнена себестоимость (<span id="missingCostCount">0</span>)</h2>
+    <p class="desc">У этих товаров ещё не задана себестоимость ни на одну дату — себестоимость проданного и маржа по ним считаются как 0, пока не заполните.</p>
+    <div id="missingCostList" class="missing-cost-list"></div>
+    <div class="missing-cost-footer">
+      <button class="pc-toggle" onclick="closeMissingCostModal()">Закрыть (напомнит при следующем входе)</button>
+    </div>
+  </div>
+</div>
+
 <div id="fbStatusBanner" style="display:none;background:var(--c-outside);color:var(--bad);padding:10px 16px;font-size:13px;border-bottom:1px solid var(--b-outside);"></div>
 
 <div class="topbar">
@@ -394,7 +425,7 @@ h3.subhead{font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:
 
       <div class="import-box" id="importBoxOzon">
         <div class="import-title">Импорт из отчёта Ozon «Начисления» (.xlsx)</div>
-        <p class="desc" style="margin-bottom:10px;">Путь к файлу в личном кабинете: Финансы → Экономика магазина → Отчёт по начислениям, период 1 день.<br>Файл разносится по дням автоматически: Продажа, Вознаграждение, Логистика, Хранение, Прочее и Реклама берутся из соответствующих типов начисления, товары сопоставляются по SKU (укажите SKU в карточке товара во вкладке «Товары»). Если Ozon переименует или добавит новый тип начисления, дашборд сам спросит, куда его отнести, и запомнит выбор на будущее.</p>
+        <p class="desc" style="margin-bottom:10px;">Путь к файлу в личном кабинете: Финансы → Экономика магазина → Отчёт по начислениям, период 1 день.<br>Файл разносится по дням автоматически: Продажа, Вознаграждение, Логистика, Хранение, Прочее и Реклама берутся из соответствующих типов начисления, товары сопоставляются по SKU (укажите SKU в карточке товара во вкладке «Товары»). Если Ozon переименует или добавит новый тип начисления, дашборд сам спросит, куда его отнести, и запомнит выбор на будущее. Если в файле встретится SKU, которого ещё нет в каталоге, — товар для него будет добавлен автоматически, с подсказкой заполнить себестоимость во вкладке «Товары».</p>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
           <input type="file" id="importFileInput" accept=".xlsx">
           <button class="save-btn" id="importBtn" onclick="handleImportFile()">Импортировать</button>
@@ -405,7 +436,7 @@ h3.subhead{font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:
 
       <div class="import-box" id="importBoxWB">
         <div class="import-title">Импорт из отчёта WB «Продажи» (.xlsx)</div>
-        <p class="desc" style="margin-bottom:10px;">Путь к файлу в личном кабинете: Аналитика → Отчёты → Продажи, период 1 день.<br>Из файла берётся только количество «Выкупили, шт.» по каждому артикулу — оно суммируется по всем складам за день и подставляется в строки товаров (себестоимость проданного считается от этого количества, как на Ozon). Товары сопоставляются по полю «Артикул WB» в карточке товара во вкладке «Товары». Остальные показатели (продажа, логистика, штрафы и т.д.) заполняются вручную. Отчёт должен быть за один день.</p>
+        <p class="desc" style="margin-bottom:10px;">Путь к файлу в личном кабинете: Аналитика → Отчёты → Продажи, период 1 день.<br>Из файла берётся только количество «Выкупили, шт.» по каждому артикулу — оно суммируется по всем складам за день и подставляется в строки товаров (себестоимость проданного считается от этого количества, как на Ozon). Товары сопоставляются по полю «Артикул WB» в карточке товара во вкладке «Товары». Остальные показатели (продажа, логистика, штрафы и т.д.) заполняются вручную. Отчёт должен быть за один день. Если в файле встретится артикул WB, которого ещё нет в каталоге, — товар для него будет добавлен автоматически, с подсказкой заполнить себестоимость во вкладке «Товары».</p>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
           <input type="file" id="importFileInputWB" accept=".xlsx">
           <button class="save-btn" id="importBtnWB" onclick="handleImportFileWB()">Импортировать</button>
@@ -439,11 +470,22 @@ h3.subhead{font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:
 
 <div class="wrap" id="productsPanel" style="display:none;">
   <div class="panel">
-    <h2>Каталог товаров</h2>
-    <p class="desc">Общий для всех разделов, где считается себестоимость (Ozon SEKAI, Ozon MELD, WB SEKAI, Сайт) — товар и его себестоимость вводятся один раз, а не отдельно на каждой площадке. Себестоимость может меняться от закупки к закупке: при изменении расчёт пересчитывается с указанной даты — все дни до неё считаются по старой себестоимости, все дни от неё и позже — по новой. Для сопоставления с выгрузками при импорте у каждого товара свой артикул на каждой площадке (задаются отдельно ниже).</p>
+    <div class="products-header">
+      <h2>Товары</h2>
+      <select id="productsSectionSelect" onchange="switchProductsPanelSection(this.value)">
+        <option value="ozon_sekai">OZON SEKAI</option>
+        <option value="ozon_meld">OZON MELD</option>
+        <option value="wb_sekai">WB SEKAI</option>
+        <option value="wb_meld">WB MELD</option>
+        <option value="ym_sekai">ЯМ SEKAI</option>
+        <option value="ym_meld">ЯМ MELD</option>
+        <option value="site">Сайт</option>
+      </select>
+    </div>
     <div class="product-list" id="productList"></div>
     <div class="add-row">
       <input type="text" name="pname" id="newPName" placeholder="Название товара">
+      <input type="text" name="psku" id="newPSku" placeholder="Артикул(ы) через запятую">
       <input type="number" name="pcost" id="newPCost" placeholder="Себестоимость, ₽" step="0.01">
       <button onclick="addProduct()">+ Добавить товар</button>
     </div>
@@ -478,7 +520,7 @@ h3.subhead{font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:
     <p class="desc">Переключатель наверху («OZON SEKAI», «OZON MELD», «WB SEKAI», «ЯМ SEKAI», «ЯМ MELD», «Сайт») — это полностью независимые наборы данных: свои товары, свои дни, своя ставка налога.</p>
 
     <h3 class="subhead">Товары и себестоимость</h3>
-    <p class="desc">Есть на Ozon, WB, ЯМ и «Сайте» — себестоимость проданного считается по количеству (сколько продано товара в этот день, по каждому SKU) и датированной себестоимости товара. Себестоимость товара можно скорректировать с указанием даты — все дни ДО этой даты считаются по старой себестоимости, все дни ОТ неё и позже — по новой.</p>
+    <p class="desc">У каждой площадки (Ozon SEKAI, Ozon MELD, WB SEKAI, WB MELD, ЯМ SEKAI, ЯМ MELD, Сайт) свой отдельный список товаров — они не связаны между собой. Если один и тот же физический товар продаётся на нескольких площадках, его нужно завести на каждой отдельно (дашборд не пытается угадать, что это один и тот же товар — слишком легко ошибиться при автосопоставлении). Себестоимость проданного считается по количеству (сколько продано товара в этот день, по каждому артикулу) и датированной себестоимости товара. Себестоимость можно скорректировать с указанием даты — все дни ДО этой даты считаются по старой себестоимости, все дни ОТ неё и позже — по новой, таблица и итоги пересчитываются автоматически, уже введённые данные при этом не теряются.</p>
 
     <h3 class="subhead">Ставка налога</h3>
     <p class="desc">Задаётся на вкладке «Ежедневные данные», действует так же, как себестоимость — с даты сохранения.</p>
@@ -487,10 +529,10 @@ h3.subhead{font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:
     <p class="desc">Таблица заполняется по дням — при выборе месяца дни создаются автоматически. Tab/Shift+Tab внутри таблицы переходит на соседнюю строку того же дня (вниз/вверх), а не на соседний день. Если в ячейке было «0» — при клике оно сразу очищается, а если ничего не ввести и уйти с поля — вернётся обратно к «0».</p>
 
     <h3 class="subhead">Импорт (Ozon)</h3>
-    <p class="desc">На вкладке «Ежедневные данные» — загрузка отчёта Ozon «Начисления» (.xlsx).<br>Путь к файлу: Финансы → Экономика магазина → Отчёт по начислениям, период 1 день.<br>Продажа, Вознаграждение, Логистика, Хранение, Прочее и Реклама разносятся по дням автоматически, товары сопоставляются по SKU (указывается в карточке товара). Если Ozon переименует или добавит новый тип начисления — дашборд остановит импорт, спросит, в какое поле его отнести, и запомнит выбор.</p>
+    <p class="desc">На вкладке «Ежедневные данные» — загрузка отчёта Ozon «Начисления» (.xlsx).<br>Путь к файлу: Финансы → Экономика магазина → Отчёт по начислениям, период 1 день.<br>Продажа, Вознаграждение, Логистика, Хранение, Прочее и Реклама разносятся по дням автоматически, товары сопоставляются по SKU (указывается в карточке товара). Если Ozon переименует или добавит новый тип начисления — дашборд остановит импорт, спросит, в какое поле его отнести, и запомнит выбор.<br>Если в файле встретится SKU, которого ещё нет в каталоге товаров этого раздела (новый товар на площадке, или старый, который ещё не заводили вручную), — дашборд сам добавит для него строку товара, сопоставит SKU и покажет во вкладке «Товары» подсказку «заполните себестоимость». Количество по этому товару уже учитывается в импорте, только цена закупки остаётся пустой до заполнения.</p>
 
     <h3 class="subhead">Импорт (WB)</h3>
-    <p class="desc">Загружается отчёт WB «Продажи».<br>Путь к файлу: Аналитика → Отчёты → Продажи, период 1 день.<br>Из файла берётся только «Выкупили, шт.» по каждому артикулу (суммируется по всем складам), дата — из заголовка файла. Товары сопоставляются по полю «Артикул WB» в карточке товара. Отчёт должен быть за один день — за более длинный период построчных дат нет, импорт не сработает.</p>
+    <p class="desc">Загружается отчёт WB «Продажи».<br>Путь к файлу: Аналитика → Отчёты → Продажи, период 1 день.<br>Из файла берётся только «Выкупили, шт.» по каждому артикулу (суммируется по всем складам), дата — из заголовка файла. Товары сопоставляются по полю «Артикул WB» в карточке товара. Отчёт должен быть за один день — за более длинный период построчных дат нет, импорт не сработает.<br>Как и на Ozon: если артикул WB ещё не встречался в каталоге товаров этого раздела, товар для него будет добавлен автоматически с подсказкой заполнить себестоимость.</p>
 
     <h3 class="subhead">Импорт расходов вне МП (ДДС)</h3>
     <p class="desc">Кнопка «Расходы вне МП» на уровне дашборда (рядом с «Товары») — один файл выгрузки ДДС
@@ -739,98 +781,18 @@ const LAST_SECTION_KEY = 'rnp_dashboard_last_section';
 
 let rootState = null;
 let state = null;
-let sharedProducts = [];
 
-// Разделы, для которых у товара есть свой код артикула (нужен для сопоставления при импорте).
-const PRODUCT_ARTICLE_SECTIONS = [
-  {id:'ozon_sekai', label:'SKU (Ozon SEKAI)'},
-  {id:'ozon_meld',  label:'SKU (Ozon MELD)'},
-  {id:'wb_sekai',   label:'Артикул WB (WB SEKAI)'},
-  {id:'wb_meld',    label:'Артикул WB (WB MELD)'},
-  {id:'ym_sekai',   label:'Артикул ЯМ (ЯМ SEKAI)'},
-  {id:'ym_meld',    label:'Артикул ЯМ (ЯМ MELD)'},
-];
-// Разделы, которые используют общий каталог товаров (для расчёта себестоимости по количеству).
-const SECTIONS_USING_PRODUCTS = ['ozon_sekai','ozon_meld','wb_sekai','wb_meld','ym_sekai','ym_meld','site'];
-
-// Товар попадает в конкретный раздел (и участвует там в расчёте себестоимости), только если
-// для него заполнен артикул этой площадки — а для "Сайта" (там нет автоматического импорта
-// и общего понятия артикула) используется отдельная галочка "включить в Сайт".
-// Разбирает поле артикула товара на список отдельных значений — можно вписать
-// несколько артикулов через запятую (например, товар переехал на новый SKU при
-// переразмещении на площадке, но продолжает считаться тем же товаром).
+// Разбирает поле артикула товара на список отдельных значений — можно вписать несколько
+// артикулов через запятую (например, товар переехал на новый SKU при переразмещении на
+// площадке, но продолжает считаться тем же товаром).
 function splitArticles(raw){
   return String(raw||'').split(',').map(s=>s.trim()).filter(Boolean);
 }
 
-function productsForSection(sectionId){
-  const filtered = sectionId==='site'
-    ? sharedProducts.filter(p=>p.includeInSite)
-    : sharedProducts.filter(p=>(p.articles||{})[sectionId]);
-  return filtered.slice().sort((a,b)=>a.name.localeCompare(b.name, 'ru'));
-}
+// Список площадок, у которых есть свой отдельный список товаров — используется только для
+// одноразовой миграции старого общего каталога (см. migrateProductsFromLegacySharedCatalog).
+const PRODUCT_SECTIONS = ['ozon_sekai','ozon_meld','wb_sekai','wb_meld','ym_sekai','ym_meld','site'];
 
-function defaultSharedProduct(name, cost){
-  return {
-    id: 'p'+Date.now()+Math.random().toString(36).slice(2,6),
-    name,
-    costHistory: [{date: todayStr(), cost}],
-    articles: Object.fromEntries(PRODUCT_ARTICLE_SECTIONS.map(s=>[s.id,''])),
-    includeInSite: false
-  };
-}
-
-function migrateSharedProduct(p){
-  if(!p.costHistory || !p.costHistory.length){
-    p.costHistory = [{date:'1970-01-01', cost: num(p.cost)}];
-  }
-  if(!p.articles) p.articles = {};
-  PRODUCT_ARTICLE_SECTIONS.forEach(s=>{ if(p.articles[s.id]===undefined) p.articles[s.id]=''; });
-  if(p.includeInSite===undefined) p.includeInSite = false;
-  // Старое единое поле sku (до разделения по площадкам) — переносим в Ozon SEKAI по умолчанию.
-  if(p.sku!==undefined){
-    if(!p.articles.ozon_sekai) p.articles.ozon_sekai = p.sku;
-    delete p.sku;
-  }
-}
-
-// Каталог товаров теперь общий для всех разделов (себестоимость одна и та же независимо
-// от площадки продажи) — хранится отдельным документом, не внутри какого-либо раздела.
-async function loadSharedProducts(){
-  let data = await storeGet('shared:products');
-  if(!data){
-    // Одноразовая миграция: если это ещё не сделано — собираем товары из старых
-    // индивидуальных каталогов разделов (версия дашборда до общего каталога товаров).
-    const merged = [];
-    const byName = {};
-    for(const sid of SECTIONS_USING_PRODUCTS){
-      const legacy = await storeGet(sectionStoreKey(sid));
-      if(!legacy || !Array.isArray(legacy.products)) continue;
-      legacy.products.forEach(p=>{
-        let target = byName[p.name];
-        if(!target){
-          target = defaultSharedProduct(p.name, 0);
-          target.costHistory = (p.costHistory && p.costHistory.length) ? p.costHistory : [{date:'1970-01-01', cost:num(p.cost)}];
-          byName[p.name] = target;
-          merged.push(target);
-        }
-        if(p.sku) target.articles[sid] = p.sku;
-      });
-    }
-    data = merged;
-  }
-  data.forEach(migrateSharedProduct);
-  sharedProducts = data;
-}
-
-// БОЛЬШЕ НЕ ИСПОЛЬЗУЕТСЯ напрямую — заменено на commitSharedProductsChange() (см. ниже),
-// которое не перезаписывает документ вслепую. Оставлено на случай, если понадобится
-// прямой доступ; новый код сюда обращаться не должен.
-async function saveSharedProducts(){
-  const ok = await storeSet('shared:products', sharedProducts);
-  if(!ok) showFbError('Не удалось сохранить изменения в товарах — проверьте интернет-соединение.');
-  else hideFbError();
-}
 
 // Загружает все 6 разделов параллельно, применяет миграцию к каждому.
 async function loadRootAsync(){
@@ -867,9 +829,11 @@ function migrateSectionData(data, sectionType){
     data.taxRateHistory = [{date:'1970-01-01', rate}];
   }
   (data.products||[]).forEach(p=>{
-    if(!p.costHistory || !p.costHistory.length){
-      p.costHistory = [{date:'1970-01-01', cost: num(p.cost)}];
-    }
+    // Не подставляем себестоимость "0" по умолчанию, если её ещё не вносили — пустая
+    // costHistory значит "не заполнено" (и должна показывать подсказку в "Товарах"),
+    // а не "заполнено нулём". Единственное, что действительно нужно, — чтобы поле было
+    // массивом (а не undefined), иначе упадёт код, который в него пушит через upsertCostHistory.
+    if(!p.costHistory) p.costHistory = [];
     if(p.sku===undefined) p.sku = '';
   });
   Object.entries(data.months||{}).forEach(([key,month])=>{
@@ -1016,30 +980,6 @@ function commitSectionChange(sectionId, mutatorFn){
   return next;
 }
 
-// Тот же принцип для общего каталога товаров (shared:products) — отдельная очередь,
-// т.к. это отдельный документ, независимый от разделов.
-let sharedProductsSaveQueue = Promise.resolve();
-function commitSharedProductsChange(mutatorFn){
-  const prev = sharedProductsSaveQueue;
-  const next = prev.then(async ()=>{
-    const fresh = await transactionalUpdate(
-      'shared:products',
-      ()=>[],
-      (data)=>{ data.forEach(migrateSharedProduct); },
-      mutatorFn
-    );
-    if(fresh){
-      sharedProducts = fresh;
-      hideFbError();
-    } else {
-      showFbError('Не удалось сохранить изменения в товарах — проверьте интернет-соединение.');
-    }
-    return fresh;
-  }).catch(e=>{ console.error('ошибка в очереди сохранения товаров', e); return null; });
-  sharedProductsSaveQueue = next;
-  return next;
-}
-
 // Тот же принцип для справочника сопоставлений ДДС (shared:dds_import_map) — отдельная
 // очередь, независимая от разделов и от каталога товаров.
 let ddsImportMapSaveQueue = Promise.resolve();
@@ -1101,7 +1041,6 @@ async function refreshSectionData(id){
   migrateSectionData(data, getSectionConfig(sectionId).type);
   rootState.sections[sectionId] = data;
   if(sectionId===rootState.activeSectionId) state = data;
-  await loadSharedProducts();
   await loadDdsImportMap();
 }
 
@@ -1119,20 +1058,41 @@ async function refreshCurrentView(){
     renderTaxBox();
     renderDaily();
     renderSummary();
-    if(document.getElementById('productsPanel').style.display==='block') renderProducts();
+    if(document.getElementById('productsPanel').style.display==='block'){
+      // Вкладка "Товары" может сейчас показывать не активный раздел шапки, а любую
+      // площадку, выбранную внутри неё через свой переключатель — обновляем именно её.
+      if(productsPanelSectionId && productsPanelSectionId!==rootState.activeSectionId){
+        await refreshSectionData(productsPanelSectionId);
+      }
+      renderProducts();
+    }
   } finally {
     isRefreshing = false;
     if(btn){ btn.disabled = false; btn.textContent = original; }
   }
 }
 
+// Площадка, выбранная ВНУТРИ вкладки "Товары" — намеренно отдельная от переключателя
+// разделов в шапке (rootState.activeSectionId), чтобы посмотреть/поправить товары другой
+// площадки не нужно было переключать всю шапку (и терять место в таблице дней).
+let productsPanelSectionId = null;
+
 async function toggleProducts(){
   const opening = document.getElementById('productsPanel').style.display !== 'block';
   if(opening){
-    await loadSharedProducts(); // подтягиваем актуальный каталог перед показом
+    if(!productsPanelSectionId) productsPanelSectionId = rootState.activeSectionId;
+    await refreshSectionData(productsPanelSectionId); // подтягиваем актуальные товары этой площадки перед показом
     renderProducts();
   }
   showView(opening ? 'products' : 'section');
+}
+
+async function switchProductsPanelSection(sid){
+  if(sid===productsPanelSectionId) return;
+  productsPanelSectionId = sid;
+  openProductEdit = null;
+  await refreshSectionData(sid);
+  renderProducts();
 }
 function toggleHelp(){
   showView(document.getElementById('helpPanel').style.display==='block' ? 'section' : 'help');
@@ -1197,25 +1157,9 @@ function nextMonthKey(key){
   return `${ny}-${String(nm).padStart(2,'0')}`;
 }
 
-/* ======================= COST / TAX LOOKUP (date-effective) ======================= */
-function getProductCostAt(product, dateStr){
-  const hist = (product.costHistory||[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
-  if(hist.length===0) return 0;
-  const applicable = hist.filter(h=>h.date<=dateStr);
-  if(applicable.length===0) return hist[0].cost;
-  return applicable[applicable.length-1].cost;
-}
-function getCurrentProductCost(product){
-  return getProductCostAt(product, todayStr());
-}
-function upsertCostHistory(product, dateStr, cost){
-  const hist = product.costHistory||(product.costHistory=[]);
-  const existing = hist.find(h=>h.date===dateStr);
-  if(existing) existing.cost = cost;
-  else hist.push({date:dateStr, cost});
-  hist.sort((a,b)=>a.date.localeCompare(b.date));
-}
-
+/* ======================= TAX LOOKUP (date-effective) ======================= */
+// (Функции себестоимости товара — getProductCostAt/getCurrentProductCost/upsertCostHistory —
+// теперь в блоке PRODUCTS ниже, вместе с остальной логикой per-площадочного списка товаров.)
 function getTaxRateAt(dateStr){
   const hist = state.taxRateHistory.slice().sort((a,b)=>a.date.localeCompare(b.date));
   const applicable = hist.filter(h=>h.date<=dateStr);
@@ -1370,79 +1314,99 @@ document.addEventListener('keydown', function(e){
   }
 });
 
-/* ======================= PRODUCTS ======================= */
-let openProductEdit = null;
-let openArticleCards = new Set(); // id товаров, у которых блок артикулов сейчас развёрнут (по умолчанию свёрнут)
-
-// Свёрнутые группы строк в таблице ежедневных данных (сейчас — только "Товары", т.к. список
-// может быть длинным). Общее для всех разделов, где встречается такая группа — Ozon/WB/Сайт.
-let collapsedTableGroups = new Set();
-function toggleTableGroup(groupId){
-  if(collapsedTableGroups.has(groupId)) collapsedTableGroups.delete(groupId);
-  else collapsedTableGroups.add(groupId);
-  renderDaily();
+/* ======================= PRODUCTS =======================
+   Товары и их себестоимость больше НЕ общие на весь дашборд — у каждой площадки
+   (OZON SEKAI, OZON MELD, WB SEKAI, WB MELD, ЯМ SEKAI, ЯМ MELD, Сайт) свой отдельный
+   список товаров, хранится прямо внутри данных этой площадки (state.products), как
+   и дни/налоговая ставка. Если один и тот же физический товар продаётся на нескольких
+   площадках — на каждой он заводится отдельной строкой; дашборд не пытается угадывать,
+   что это один и тот же товар (осознанное решение — см. обсуждение с 31.08.2026:
+   слишком легко ошибиться при автосопоставлении, а ручное объединение усложняло интерфейс
+   без реальной необходимости). */
+let openProductEdit = null; // id товара, у которого сейчас открыта форма корректировки себестоимости
+let productIdCounter = 0;
+function newProductId(){
+  return 'p'+Date.now()+'_'+(productIdCounter++)+Math.random().toString(36).slice(2,6);
 }
 
-function toggleArticles(id){
-  if(openArticleCards.has(id)) openArticleCards.delete(id);
-  else openArticleCards.add(id);
-  renderProducts();
+// Данные площадки, выбранной внутри вкладки "Товары" (см. productsPanelSectionId выше) —
+// не обязательно совпадает с активным разделом шапки.
+function productsPanelData(){
+  return rootState.sections[productsPanelSectionId] || {products:[]};
+}
+
+// Товары ВЫБРАННОЙ во вкладке "Товары" площадки, отсортированные по имени (кому ещё нужно
+// заполнить себестоимость — в начале списка, чтобы сразу бросались в глаза).
+function currentSectionProducts(){
+  return (productsPanelData().products||[]).slice().sort((a,b)=>{
+    const aw = !((a.costHistory||[]).length), bw = !((b.costHistory||[]).length);
+    if(aw!==bw) return aw? -1 : 1;
+    return a.name.localeCompare(b.name, 'ru');
+  });
+}
+
+/* ======================= COST LOOKUP (date-effective) ======================= */
+function getProductCostAt(product, dateStr){
+  const hist = (product.costHistory||[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
+  if(hist.length===0) return 0;
+  const applicable = hist.filter(h=>h.date<=dateStr);
+  if(applicable.length===0) return hist[0].cost;
+  return applicable[applicable.length-1].cost;
+}
+function getCurrentProductCost(product){
+  return getProductCostAt(product, todayStr());
+}
+function upsertCostHistory(product, dateStr, cost){
+  const hist = product.costHistory||(product.costHistory=[]);
+  const existing = hist.find(h=>h.date===dateStr);
+  if(existing) existing.cost = cost;
+  else hist.push({date:dateStr, cost});
+  hist.sort((a,b)=>a.date.localeCompare(b.date));
 }
 
 function renderProducts(){
+  const selectEl = document.getElementById('productsSectionSelect');
+  if(selectEl) selectEl.value = productsPanelSectionId;
   const list = document.getElementById('productList');
-  if(sharedProducts.length===0){
-    list.innerHTML = '<div class="empty-state" style="padding:14px 0;">Пока нет товаров — добавьте первый ниже.</div>';
+  const products = currentSectionProducts();
+  if(products.length===0){
+    list.innerHTML = '<div class="empty-state" style="padding:14px 0;">Пока нет товаров на этой площадке — добавьте первый ниже.</div>';
     return;
   }
   const today = todayStr();
-  const sortedProducts = sharedProducts.slice().sort((a,b)=>a.name.localeCompare(b.name, 'ru'));
-  list.innerHTML = sortedProducts.map(p=>{
+  list.innerHTML = products.map(p=>{
     const hist = (p.costHistory||[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
     const currentEntry = hist.filter(h=>h.date<=today).slice(-1)[0] || hist[0];
+    const hasCost = hist.length>0;
     const isOpen = openProductEdit===p.id;
-    const isArticlesOpen = openArticleCards.has(p.id);
+    // Хронологический порядок — от новой даты к старой, независимо от того, в каком порядке
+    // корректировки вносились (даже если запись за более раннюю дату добавили позже остальных).
     const historyLines = hist.slice().reverse().map(h=>`с ${fmtDate(h.date)} — ${fmt(h.cost)} ₽`).join('<br>');
-    const articleRows = PRODUCT_ARTICLE_SECTIONS.map(s=>`
-      <div class="pc-article-row">
-        <label>${s.label}</label>
-        <input type="text" value="${escapeHtml((p.articles||{})[s.id]||'')}" placeholder="артикул(ы) через запятую"
-          onchange="updateProductArticle('${p.id}','${s.id}', this.value)">
-      </div>
-    `).join('');
     return `
     <div class="product-card">
       <div class="pc-head">
-        <span class="pc-name">${escapeHtml(p.name)}</span>
+        <input type="text" class="pc-name-input" value="${escapeHtml(p.name)}"
+          onchange="updateProductName('${p.id}', this.value)" title="Название товара — можно изменить">
         <button class="pc-del" onclick="removeProduct('${p.id}')" title="Удалить">×</button>
       </div>
+      ${hasCost?'':'<span class="pc-badge-warn">заполните себестоимость</span>'}
+      ${p.autoAdded?'<div class="pc-cost-since" style="margin-top:2px;">добавлен автоматически из импорта</div>':''}
+      <div class="pc-sku-row">
+        <label>Артикул</label>
+        <input type="text" value="${escapeHtml(p.sku||'')}" placeholder="артикул(ы) через запятую"
+          onchange="updateProductSku('${p.id}', this.value)">
+      </div>
       <div class="pc-cost-row">
-        <span class="pc-cost-now">${fmt(currentEntry?currentEntry.cost:0)} ₽</span>
+        <span class="${hasCost?'pc-cost-now':'pc-cost-since'}">${hasCost?fmt(currentEntry.cost)+' ₽':'себестоимость не задана'}</span>
         <span class="pc-cost-since">${currentEntry? 'себестоимость с '+fmtDate(currentEntry.date) : ''}</span>
       </div>
-      <button class="pc-toggle" onclick="toggleProductEdit('${p.id}')">${isOpen?'Отменить':'Скорректировать себестоимость'}</button>
+      <button class="pc-toggle" onclick="toggleProductEdit('${p.id}')">${isOpen?'Отменить':(hasCost?'Скорректировать':'Задать себестоимость')}</button>
       <div class="pc-edit-form ${isOpen?'open':''}">
         <input type="date" id="costDate-${p.id}" value="${today}">
         <input type="number" id="costValue-${p.id}" step="0.01" placeholder="Новая себестоимость, ₽">
         <button class="save-btn" id="costSaveBtn-${p.id}" onclick="saveCost('${p.id}')">Сохранить</button>
       </div>
       ${hist.length>1?`<div class="pc-history">${historyLines}</div>`:''}
-      <div class="pc-articles">
-        <div class="pc-articles-title" onclick="toggleArticles('${p.id}')">
-          <span>Артикулы для сопоставления при импорте</span>
-          <span class="pc-articles-arrow">${isArticlesOpen?'▾':'▸'}</span>
-        </div>
-        <div class="pc-articles-body" style="display:${isArticlesOpen?'block':'none'};">
-          ${articleRows}
-          <div class="pc-article-row">
-            <label>Сайт</label>
-            <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:400;color:var(--ink);cursor:pointer;">
-              <input type="checkbox" ${p.includeInSite?'checked':''} onchange="updateProductSiteFlag('${p.id}', this.checked)">
-              добавить в раздел «Сайт» для подсчёта себестоимости
-            </label>
-          </div>
-        </div>
-      </div>
     </div>`;
   }).join('');
 }
@@ -1454,66 +1418,84 @@ function toggleProductEdit(id){
 
 function addProduct(){
   const nameEl = document.getElementById('newPName');
+  const skuEl = document.getElementById('newPSku');
   const costEl = document.getElementById('newPCost');
   const name = nameEl.value.trim();
-  const cost = parseFloat(costEl.value)||0;
+  const sku = skuEl.value.trim();
+  const cost = parseFloat(costEl.value);
   if(!name){ nameEl.focus(); return; }
-  const newProduct = defaultSharedProduct(name, cost);
-  const applyChange = (products)=>{
-    if(!products.some(p=>p.id===newProduct.id)) products.push(JSON.parse(JSON.stringify(newProduct)));
+  const sectionId = productsPanelSectionId;
+  const newProduct = {
+    id: newProductId(), name, sku,
+    costHistory: isNaN(cost) ? [] : [{date: todayStr(), cost}]
   };
-  applyChange(sharedProducts);
-  nameEl.value=''; costEl.value='';
-  renderProducts(); renderDaily(); renderSummary();
-  commitSharedProductsChange(applyChange);
+  const applyChange = (sectionData)=>{
+    if(!sectionData.products.some(p=>p.id===newProduct.id)) sectionData.products.push(JSON.parse(JSON.stringify(newProduct)));
+  };
+  applyChange(productsPanelData()); // мгновенно локально
+  nameEl.value=''; skuEl.value=''; costEl.value='';
+  renderProducts();
+  if(sectionId===rootState.activeSectionId){ renderDaily(); renderSummary(); }
+  commitSectionChange(sectionId, applyChange);
 }
 function removeProduct(id){
   if(!confirm('Удалить товар? Данные по его продажам в днях сохранятся, но перестанут отображаться.')) return;
-  const applyChange = (products)=>{
-    const idx = products.findIndex(p=>p.id===id);
-    if(idx!==-1) products.splice(idx,1);
+  const sectionId = productsPanelSectionId;
+  const applyChange = (sectionData)=>{
+    const idx = sectionData.products.findIndex(p=>p.id===id);
+    if(idx!==-1) sectionData.products.splice(idx,1);
   };
-  applyChange(sharedProducts);
-  renderProducts(); renderDaily(); renderSummary();
-  commitSharedProductsChange(applyChange);
+  applyChange(productsPanelData());
+  renderProducts();
+  if(sectionId===rootState.activeSectionId){ renderDaily(); renderSummary(); }
+  commitSectionChange(sectionId, applyChange);
 }
-function updateProductArticle(id, sectionId, value){
+function updateProductName(id, value){
   const trimmed = value.trim();
-  const applyChange = (products)=>{
-    const p = products.find(p=>p.id===id);
-    if(!p) return;
-    if(!p.articles) p.articles = {};
-    p.articles[sectionId] = trimmed;
+  if(!trimmed){ renderProducts(); return; } // пустое название не сохраняем — просто откатываем поле
+  const sectionId = productsPanelSectionId;
+  const applyChange = (sectionData)=>{
+    const p = sectionData.products.find(p=>p.id===id);
+    if(p) p.name = trimmed;
   };
-  applyChange(sharedProducts);
-  renderDaily(); renderSummary();
-  commitSharedProductsChange(applyChange);
+  applyChange(productsPanelData());
+  renderProducts();
+  if(sectionId===rootState.activeSectionId){ renderDaily(); renderSummary(); }
+  commitSectionChange(sectionId, applyChange);
 }
-function updateProductSiteFlag(id, checked){
-  const flag = !!checked;
-  const applyChange = (products)=>{
-    const p = products.find(p=>p.id===id);
-    if(p) p.includeInSite = flag;
+function updateProductSku(id, value){
+  const trimmed = value.trim();
+  const sectionId = productsPanelSectionId;
+  const applyChange = (sectionData)=>{
+    const p = sectionData.products.find(p=>p.id===id);
+    if(p) p.sku = trimmed;
   };
-  applyChange(sharedProducts);
-  renderDaily(); renderSummary();
-  commitSharedProductsChange(applyChange);
+  applyChange(productsPanelData());
+  if(sectionId===rootState.activeSectionId){ renderDaily(); renderSummary(); }
+  commitSectionChange(sectionId, applyChange);
+  renderProducts();
 }
 function saveCost(id){
   const btn = document.getElementById('costSaveBtn-'+id);
   const dateVal = document.getElementById('costDate-'+id).value;
   const costVal = parseFloat(document.getElementById('costValue-'+id).value);
   if(!dateVal || isNaN(costVal)){ alert('Укажите дату и новую себестоимость.'); return; }
-  const applyChange = (products)=>{
-    const p = products.find(p=>p.id===id);
+  const sectionId = productsPanelSectionId;
+  const applyChange = (sectionData)=>{
+    const p = sectionData.products.find(p=>p.id===id);
     if(p) upsertCostHistory(p, dateVal, costVal);
   };
   flashSaveButton(btn, async ()=>{
-    applyChange(sharedProducts); // мгновенно локально
-    return await commitSharedProductsChange(applyChange); // и надёжно, отдельным документом, в базу
+    applyChange(productsPanelData()); // мгновенно локально
+    return await commitSectionChange(sectionId, applyChange); // и надёжно, поверх самой свежей версии раздела
   }, ()=>{
     openProductEdit = null;
-    renderProducts(); renderDaily(); renderSummary();
+    // Пересчёт всей таблицы дней и итогов происходит здесь автоматически: getProductCostAt
+    // читает costHistory заново при каждом вызове, поэтому себестоимость "задним числом"
+    // сразу применяется ко всем прошлым и будущим дням этой площадки, без отдельного шага.
+    renderProducts();
+    if(sectionId===rootState.activeSectionId){ renderDaily(); renderSummary(); }
+    if(document.getElementById('missingCostBackdrop').style.display!=='none') renderMissingCostModal(); // если окно открыто фоном — обновим список
   });
 }
 
@@ -1664,9 +1646,9 @@ function calcDayOzon(day){
   const reward = num(day.reward);
 
   let cogs = 0;
-  productsForSection(rootState.activeSectionId).forEach(p=>{
+  currentSectionProducts().forEach(p=>{
     const qty = num(day.salesQty[p.id]);
-    cogs += qty * getProductCostAt(p, day.date);
+    cogs += qty * getProductCostAt(p, day.date, rootState.activeSectionId);
   });
 
   const netToAccount = salesRub - reward - num(day.logistics) - num(day.fines) - num(day.storage)
@@ -1699,9 +1681,9 @@ function calcDayWB(day){
   const commission = salesRub - boughtNetRub;
 
   let cogs = 0;
-  productsForSection(rootState.activeSectionId).forEach(p=>{
+  currentSectionProducts().forEach(p=>{
     const qty = num(day.salesQty[p.id]);
-    cogs += qty * getProductCostAt(p, day.date);
+    cogs += qty * getProductCostAt(p, day.date, rootState.activeSectionId);
   });
 
   const logistics = num(day.logistics), fines = num(day.fines), storage = num(day.storage),
@@ -1741,9 +1723,9 @@ function calcDayYM(day){
         extraPayments = num(day.extraPayments);
 
   let cogs = 0;
-  productsForSection(rootState.activeSectionId).forEach(p=>{
+  currentSectionProducts().forEach(p=>{
     const qty = num((day.salesQty||{})[p.id]);
-    cogs += qty * getProductCostAt(p, day.date);
+    cogs += qty * getProductCostAt(p, day.date, rootState.activeSectionId);
   });
 
   const netToAccount = salesRub - commission - logistics - fines - storage - paidAcceptance
@@ -1774,9 +1756,9 @@ function calcDaySite(day){
   const salesRub = num(day.salesRub);
 
   let cogs = 0;
-  productsForSection('site').forEach(p=>{
+  currentSectionProducts().forEach(p=>{
     const qty = num(day.salesQty[p.id]);
-    cogs += qty * getProductCostAt(p, day.date);
+    cogs += qty * getProductCostAt(p, day.date, 'site');
   });
 
   const netToAccount = salesRub;
@@ -1961,9 +1943,13 @@ function aggregateAccrualRows(rows){
   const header = rows[headerRowIdx].map(normalizeHeaderText);
   const idx = name => header.indexOf(normalizeHeaderText(name));
   const cols = Object.fromEntries(IMPORT_REQUIRED_COLUMNS.map(n=>[n, idx(n)]));
+  // Необязательная колонка — если есть в отчёте, используем как название нового товара при
+  // автодобавлении по SKU, которого ещё нет в каталоге. Отчёт без неё импортируется как раньше.
+  const idxName = idx('Наименование товара');
 
   const byDate = {};
   const unknownTypes = new Set();
+  const nameBySku = {};
 
   for(let r=headerRowIdx+1; r<rows.length; r++){
     const row = rows[r];
@@ -1983,6 +1969,7 @@ function aggregateAccrualRows(rows){
     const qty = num(row[cols['Количество']]);
     const price = num(row[cols['Цена продавца']]);
     const total = num(row[cols['Сумма итого, руб.']]);
+    if(sku && idxName!==-1 && !nameBySku[sku] && row[idxName]) nameBySku[sku] = row[idxName];
 
     if(!byDate[dateStr]) byDate[dateStr] = {
       salesRub:0, reward:0, logistics:0, fines:0, extraPayments:0, storage:0, otherExpenses:0, adSpend:0, skuQty:{}
@@ -2015,27 +2002,60 @@ function aggregateAccrualRows(rows){
     Object.keys(acc.skuQty).forEach(sku=>{ acc.skuQty[sku] = round2(acc.skuQty[sku]); });
   });
 
-  return {byDate, unknownTypes};
+  return {byDate, unknownTypes, nameBySku};
 }
 
-function applyImportedAccruals(byDate){
+// Автоматически заводит в общем каталоге товар для SKU/артикула площадки, которого там ещё
+// нет (новый товар на площадке, или старый, который до сих пор не был добавлен вручную) —
+// себестоимость для этой площадки остаётся пустой, с явной подсказкой заполнить её. Общая
+// для импорта Ozon и WB логика — вынесена, чтобы не расходиться между ними.
+function applyImportedAccruals(byDate, nameBySku){
   const sectionId = rootState.activeSectionId;
   const type = getSectionConfig(sectionId).type;
-  const productBySku = {};
-  sharedProducts.forEach(p=>{ splitArticles((p.articles||{})[sectionId]).forEach(a=>{ productBySku[a] = p; }); });
+  const buildProductBySku = (products)=>{
+    const map = {};
+    (products||[]).forEach(p=>{ splitArticles(p.sku).forEach(a=>{ map[a] = p; }); });
+    return map;
+  };
 
   const datesUpdated = [];
   const unmatchedSkus = new Set();
   Object.entries(byDate).forEach(([dateStr, acc])=>{
     datesUpdated.push({date: dateStr, ...acc});
+    const productBySku = buildProductBySku(state.products);
     Object.keys(acc.skuQty).forEach(sku=>{ if(!productBySku[sku]) unmatchedSkus.add(sku); });
   });
+
+  const addedProducts = [];
+  // Id для новых товаров генерируем ОДИН раз здесь, а не внутри мутатора — мутатор может
+  // выполниться дважды (мгновенно локально и ещё раз при записи в базу поверх самой свежей
+  // версии раздела), и если бы id создавался внутри него, локально показанный товар и
+  // реально сохранённый в базе могли бы разъехаться по разным id.
+  const newIdBySku = {};
+  unmatchedSkus.forEach(sku=>{ newIdBySku[sku] = newProductId(); });
 
   // Мутатор описывает "наложить эти строки импорта на раздел" — переносим саму логику
   // в переиспользуемую функцию, чтобы применить её и мгновенно локально (для отчёта об
   // импорте), и повторно — к самой свежей версии раздела прямо перед сохранением, не
-  // трогая дни, которые мог сохранить кто-то ещё за это время.
+  // трогая дни, которые мог сохранить кто-то ещё за это время. Товар, добавленный
+  // автоматически (см. ниже), заводится в этом же мутаторе — значит, и товар, и данные дня
+  // сохраняются одной транзакцией, без риска, что одно долетит до базы, а другое нет.
   const applyChange = (sectionData)=>{
+    // Новые SKU, которых ещё нет в списке товаров ЭТОЙ площадки, — заводим для них строку
+    // товара прямо здесь, чтобы количество сразу попало в разбивку по товарам, а
+    // себестоимость осталась только заполнить. Если этот же физический товар продаётся и
+    // на другой площадке — там при её импорте появится своя отдельная строка: списки
+    // товаров у площадок теперь независимые, дашборд не пытается угадывать совпадения.
+    unmatchedSkus.forEach(sku=>{
+      const already = (sectionData.products||[]).some(p=>splitArticles(p.sku).includes(sku));
+      if(already) return;
+      const name = (nameBySku && nameBySku[sku]) ? String(nameBySku[sku]).trim() : ('Новый товар '+sku);
+      const p = {id:newIdBySku[sku], name, sku, costHistory:[], autoAdded:true};
+      sectionData.products.push(p);
+      if(sectionData===state) addedProducts.push(p); // отчёт об импорте строим только по локальному (первому) применению
+    });
+    const productBySku = buildProductBySku(sectionData.products);
+
     Object.entries(byDate).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([dateStr, acc])=>{
       const monthKey = dateStr.slice(0,7);
       const month = ensureMonth(monthKey, sectionData, type);
@@ -2069,7 +2089,7 @@ function applyImportedAccruals(byDate){
   applyChange(state); // мгновенно локально
   commitSectionChange(sectionId, applyChange); // и надёжно, поверх самой свежей версии раздела
 
-  return {datesUpdated, unmatchedSkus};
+  return {datesUpdated, addedProducts};
 }
 
 function renderImportReport(html){
@@ -2159,7 +2179,7 @@ function removeTypeMappingByIndex(i){
 }
 
 function runImport(rows){
-  const {byDate, unknownTypes} = aggregateAccrualRows(rows);
+  const {byDate, unknownTypes, nameBySku} = aggregateAccrualRows(rows);
 
   if(unknownTypes.size>0){
     pendingImportRows = rows;
@@ -2168,7 +2188,7 @@ function runImport(rows){
     return;
   }
 
-  const {datesUpdated, unmatchedSkus} = applyImportedAccruals(byDate);
+  const {datesUpdated, addedProducts} = applyImportedAccruals(byDate, nameBySku);
 
   const rowsHtml = datesUpdated.map(d=>`
     <tr>
@@ -2189,17 +2209,17 @@ function runImport(rows){
       <tbody>${rowsHtml}</tbody>
     </table>`;
 
-  if(unmatchedSkus.size>0){
+  if(addedProducts.length>0){
     html += `<div class="import-warn">
-      Не найдено товаров с такими SKU в каталоге — их количество не попало в разбивку по товарам
-      (но входит в общую сумму продажи): <b>${Array.from(unmatchedSkus).map(escapeHtml).join(', ')}</b>.
-      Добавьте эти SKU карточкам товаров во вкладке «Товары» и импортируйте файл ещё раз.
+      Новых товаров добавлено в каталог автоматически: <b>${addedProducts.map(p=>escapeHtml(p.name)).join(', ')}</b>.
+      Их количество уже учтено в этом импорте — зайдите во вкладку «Товары» и заполните
+      себестоимость для каждого (отмечены подсказкой).
     </div>`;
   }
 
   renderImportReport(html);
   populateMonthSelectors();
-  renderDaily(); renderSummary();
+  renderDaily(); renderSummary(); renderProducts(); renderMissingCostModal();
 }
 
 /* ======================= МИНИМАЛЬНЫЙ XLSX-ПАРСЕР (без внешних библиотек) =======================
@@ -2457,21 +2477,39 @@ function aggregateWBRedemptions(rows){
   return {date: dateInfo.start, qtyByArticle, nameByArticle};
 }
 
-function applyWBRedemptions(date, qtyByArticle){
+function applyWBRedemptions(date, qtyByArticle, nameByArticle){
   const sectionId = rootState.activeSectionId;
   const type = getSectionConfig(sectionId).type;
-  const productByArticle = {};
-  sharedProducts.forEach(p=>{ splitArticles((p.articles||{})[sectionId]).forEach(a=>{ productByArticle[a] = p; }); });
+  const buildProductByArticle = (products)=>{
+    const map = {};
+    (products||[]).forEach(p=>{ splitArticles(p.sku).forEach(a=>{ map[a] = p; }); });
+    return map;
+  };
 
+  const unmatchedArticles = new Set();
+  const preCheckMap = buildProductByArticle(state.products);
+  Object.keys(qtyByArticle).forEach(article=>{ if(!preCheckMap[article]) unmatchedArticles.add(article); });
+
+  const addedProducts = [];
   const matched = [];
-  const unmatched = [];
-  Object.entries(qtyByArticle).forEach(([article, qty])=>{
-    const product = productByArticle[article];
-    if(product) matched.push({name: product.name, qty});
-    else unmatched.push({article, qty});
-  });
+  // Id для новых товаров — один раз здесь, не внутри мутатора (см. пояснение в импорте Ozon).
+  const newIdByArticle = {};
+  unmatchedArticles.forEach(article=>{ newIdByArticle[article] = newProductId(); });
 
+  // Как и в импорте Ozon: товар и данные дня сохраняются одним мутатором — одной транзакцией.
   const applyChange = (sectionData)=>{
+    // Новые артикулы WB, которых ещё нет в списке товаров ЭТОЙ площадки, — заводим товар
+    // прямо здесь (себестоимость пока пуста, с подсказкой заполнить её), как и на Ozon.
+    unmatchedArticles.forEach(article=>{
+      const already = (sectionData.products||[]).some(p=>splitArticles(p.sku).includes(article));
+      if(already) return;
+      const name = (nameByArticle && nameByArticle[article]) ? String(nameByArticle[article]).trim() : ('Новый товар '+article);
+      const p = {id:newIdByArticle[article], name, sku:article, costHistory:[], autoAdded:true};
+      sectionData.products.push(p);
+      if(sectionData===state) addedProducts.push(p); // отчёт об импорте строим только по локальному (первому) применению
+    });
+    const productByArticle = buildProductByArticle(sectionData.products);
+
     const monthKey = date.slice(0,7);
     const month = ensureMonth(monthKey, sectionData, type);
     let day = month.days.find(d=>d.date===date);
@@ -2486,13 +2524,16 @@ function applyWBRedemptions(date, qtyByArticle){
     day.salesQty = {};
     Object.entries(qtyByArticle).forEach(([article, qty])=>{
       const product = productByArticle[article];
-      if(product) day.salesQty[product.id] = round2(qty);
+      if(product){
+        day.salesQty[product.id] = round2(qty);
+        if(sectionData===state) matched.push({name: product.name, qty}); // отчёт строим только по локальному применению
+      }
     });
   };
 
   applyChange(state); // мгновенно локально
   commitSectionChange(sectionId, applyChange); // и надёжно, поверх самой свежей версии раздела
-  return {date, matched, unmatched};
+  return {date, matched, addedProducts};
 }
 
 function renderImportReportWB(html){
@@ -2513,7 +2554,7 @@ function handleImportFileWB(){
     try{
       const rows = await parseGenericXlsxFile(e.target.result);
       const {date, qtyByArticle, nameByArticle} = aggregateWBRedemptions(rows);
-      const {matched, unmatched} = applyWBRedemptions(date, qtyByArticle);
+      const {matched, addedProducts} = applyWBRedemptions(date, qtyByArticle, nameByArticle);
 
       let html = `<div class="import-ok">Импортирован день: ${fmtDate(date)}</div>`;
       if(matched.length){
@@ -2521,16 +2562,16 @@ function handleImportFileWB(){
         html += matched.map(m=>`<tr><td>${escapeHtml(m.name)}</td><td>${fmtQty(m.qty)}</td></tr>`).join('');
         html += `</tbody></table>`;
       }
-      if(unmatched.length){
+      if(addedProducts.length>0){
         html += `<div class="import-warn">
-          Не найдено товаров с такими артикулами WB в каталоге — их количество не учтено:
-          <b>${unmatched.map(u=>escapeHtml(String(u.article))+' ('+escapeHtml(nameByArticle[u.article]||'?')+') — '+fmtQty(u.qty)+' шт.').join(', ')}</b>.
-          Добавьте эти артикулы карточкам товаров во вкладке «Товары» и импортируйте файл ещё раз.
+          Новых товаров добавлено в каталог автоматически: <b>${addedProducts.map(p=>escapeHtml(p.name)).join(', ')}</b>.
+          Их количество уже учтено в этом импорте — зайдите во вкладку «Товары» и заполните
+          себестоимость для каждого (отмечены подсказкой).
         </div>`;
       }
       renderImportReportWB(html);
       populateMonthSelectors();
-      renderDaily(); renderSummary();
+      renderDaily(); renderSummary(); renderProducts(); renderMissingCostModal();
     }catch(err){
       renderImportReportWB(`<div class="import-err">Не удалось разобрать файл: ${escapeHtml(err.message)}</div>`);
     }finally{
@@ -2986,7 +3027,7 @@ function buildMetricRowsOzon(){
   rows.push({group:'orders', label:'Заказано, ₽', field:'orderedRub', kind:'money'});
   rows.push({group:'orders', label:'Заказано, шт', field:'orderedQty', kind:'qty'});
   rows.push({group:'sales', label:'Продажа, ₽', field:'salesRub', kind:'money'});
-  productsForSection(rootState.activeSectionId).forEach(p=>{
+  currentSectionProducts().forEach(p=>{
     rows.push({group:'products', label:p.name, field:'salesQty.'+p.id, kind:'qty'});
   });
   rows.push({group:'inside', label:'Вознаграждение', field:'reward', kind:'money'});
@@ -3013,7 +3054,7 @@ function buildMetricRowsWB(){
   rows.push({group:'orders', label:'Заказано до СПП, ₽', field:'orderedRub', kind:'money'});
   rows.push({group:'orders', label:'Заказано, шт', field:'orderedQty', kind:'qty'});
   rows.push({group:'sales', label:'Продажа, ₽', field:'salesRub', kind:'money'});
-  productsForSection(rootState.activeSectionId).forEach(p=>{
+  currentSectionProducts().forEach(p=>{
     rows.push({group:'products', label:p.name, field:'salesQty.'+p.id, kind:'qty'});
   });
   rows.push({group:'inside', label:'Выкуплено (за вычетом СПП и комиссии)', field:'boughtNetRub', kind:'money'});
@@ -3040,7 +3081,7 @@ function buildMetricRowsYM(){
   rows.push({group:'orders', label:'Заказано до скидки, ₽', field:'orderedRub', kind:'money'});
   rows.push({group:'orders', label:'Заказано, шт', field:'orderedQty', kind:'qty'});
   rows.push({group:'sales', label:'Продажа, ₽', field:'salesRub', kind:'money'});
-  productsForSection(rootState.activeSectionId).forEach(p=>{
+  currentSectionProducts().forEach(p=>{
     rows.push({group:'products', label:p.name, field:'salesQty.'+p.id, kind:'qty'});
   });
   rows.push({group:'inside', label:'Комиссия ЯМ', field:'commission', kind:'money'});
@@ -3063,7 +3104,7 @@ function buildMetricRowsYM(){
 function buildMetricRowsSite(){
   const rows = [];
   rows.push({group:'sales', label:'Продажа, ₽', field:'salesRub', kind:'money'});
-  productsForSection('site').forEach(p=>{
+  currentSectionProducts().forEach(p=>{
     rows.push({group:'products', label:p.name, field:'salesQty.'+p.id, kind:'qty'});
   });
   EXTERNAL_FIELDS.forEach(([id,label])=>{
@@ -3102,8 +3143,8 @@ function renderDaily(){
     `заполнено дней: ${filledCount} из ${month.days.length}`;
 
   const wrap = document.getElementById('dailyTableWrap');
-  if(productsForSection(rootState.activeSectionId).length===0){
-    wrap.innerHTML = sharedProducts.length===0
+  if(currentSectionProducts().length===0){
+    wrap.innerHTML = (state.products||[]).length===0
       ? '<div class="empty-state">Сначала добавьте товары на странице «Товары» — тогда появятся строки продаж по товарам.</div>'
       : '<div class="empty-state">Для этого раздела нет ни одного товара с заполненным артикулом (или галочкой «Сайт»). Откройте «Товары» и укажите артикул/отметьте галочку для нужных товаров.</div>';
     return;
@@ -3196,7 +3237,7 @@ function computeMonthTotalsOzon(key){
   };
   const salesByProduct = {};
   const externalByField = Object.fromEntries(EXTERNAL_FIELDS.map(f=>[f[0],0]));
-  productsForSection(rootState.activeSectionId).forEach(p=>salesByProduct[p.id]=0);
+  currentSectionProducts().forEach(p=>salesByProduct[p.id]=0);
 
   month.days.forEach(day=>{
     const c = calcDay(day);
@@ -3219,7 +3260,7 @@ function computeMonthTotalsOzon(key){
     totals.tax += c.tax;
     totals.ebitda += c.ebitda;
     totals.netProfit += c.netProfit;
-    productsForSection(rootState.activeSectionId).forEach(p=>{ salesByProduct[p.id]+= num(day.salesQty[p.id]); });
+    currentSectionProducts().forEach(p=>{ salesByProduct[p.id]+= num(day.salesQty[p.id]); });
     EXTERNAL_FIELDS.forEach(([id])=>{ externalByField[id] += num((day.external||{})[id]); });
   });
 
@@ -3241,7 +3282,7 @@ function computeMonthTotalsWB(key){
   };
   const salesByProduct = {};
   const externalByField = Object.fromEntries(EXTERNAL_FIELDS.map(f=>[f[0],0]));
-  productsForSection(rootState.activeSectionId).forEach(p=>salesByProduct[p.id]=0);
+  currentSectionProducts().forEach(p=>salesByProduct[p.id]=0);
 
   month.days.forEach(day=>{
     const c = calcDay(day);
@@ -3266,7 +3307,7 @@ function computeMonthTotalsWB(key){
     totals.tax += c.tax;
     totals.ebitda += c.ebitda;
     totals.netProfit += c.netProfit;
-    productsForSection(rootState.activeSectionId).forEach(p=>{ salesByProduct[p.id]+= num(day.salesQty[p.id]); });
+    currentSectionProducts().forEach(p=>{ salesByProduct[p.id]+= num(day.salesQty[p.id]); });
     EXTERNAL_FIELDS.forEach(([id])=>{ externalByField[id] += num((day.external||{})[id]); });
   });
 
@@ -3287,7 +3328,7 @@ function computeMonthTotalsYM(key){
   };
   const externalByField = Object.fromEntries(EXTERNAL_FIELDS.map(f=>[f[0],0]));
   const salesByProduct = {};
-  productsForSection(rootState.activeSectionId).forEach(p=>salesByProduct[p.id]=0);
+  currentSectionProducts().forEach(p=>salesByProduct[p.id]=0);
 
   month.days.forEach(day=>{
     const c = calcDay(day);
@@ -3311,7 +3352,7 @@ function computeMonthTotalsYM(key){
     totals.tax += c.tax;
     totals.ebitda += c.ebitda;
     totals.netProfit += c.netProfit;
-    productsForSection(rootState.activeSectionId).forEach(p=>{ salesByProduct[p.id]+= num((day.salesQty||{})[p.id]); });
+    currentSectionProducts().forEach(p=>{ salesByProduct[p.id]+= num((day.salesQty||{})[p.id]); });
     EXTERNAL_FIELDS.forEach(([id])=>{ externalByField[id] += num((day.external||{})[id]); });
   });
 
@@ -3329,7 +3370,7 @@ function computeMonthTotalsSite(key){
   };
   const salesByProduct = {};
   const externalByField = Object.fromEntries(EXTERNAL_FIELDS.map(f=>[f[0],0]));
-  productsForSection('site').forEach(p=>salesByProduct[p.id]=0);
+  currentSectionProducts().forEach(p=>salesByProduct[p.id]=0);
 
   month.days.forEach(day=>{
     const c = calcDay(day);
@@ -3341,7 +3382,7 @@ function computeMonthTotalsSite(key){
     totals.tax += c.tax;
     totals.ebitda += c.ebitda;
     totals.netProfit += c.netProfit;
-    productsForSection('site').forEach(p=>{ salesByProduct[p.id]+= num(day.salesQty[p.id]); });
+    currentSectionProducts().forEach(p=>{ salesByProduct[p.id]+= num(day.salesQty[p.id]); });
     EXTERNAL_FIELDS.forEach(([id])=>{ externalByField[id] += num((day.external||{})[id]); });
   });
 
@@ -3367,7 +3408,7 @@ function renderSummaryOzon(month, t){
 
   const body = document.getElementById('summaryBody');
 
-  if(month.days.length===0 && sharedProducts.length===0){
+  if(month.days.length===0 && (state.products||[]).length===0){
     body.innerHTML = '<div class="empty-state">Добавьте товары и заполните хотя бы один день, чтобы увидеть итоги.</div>';
     return;
   }
@@ -3375,9 +3416,9 @@ function renderSummaryOzon(month, t){
   const wfStep = (lbl,val,cls='')=>`
     <div class="wf-step ${cls}"><div class="lbl">${lbl}</div><div class="val">${fmt(val)} ₽</div></div>`;
 
-  const productRows = productsForSection(rootState.activeSectionId).map(p=>{
+  const productRows = currentSectionProducts().map(p=>{
     const qty = t.salesByProduct[p.id]||0;
-    return `<div class="kpi"><div class="lbl">${escapeHtml(p.name)}</div><div class="val">${fmtQty(qty)} шт · ${fmt(qty*getCurrentProductCost(p))} ₽</div></div>`;
+    return `<div class="kpi"><div class="lbl">${escapeHtml(p.name)}</div><div class="val">${fmtQty(qty)} шт · ${fmt(qty*getCurrentProductCost(p, rootState.activeSectionId))} ₽</div></div>`;
   }).join('');
 
   const externalRows = EXTERNAL_FIELDS.map(([id,label])=>`
@@ -3406,7 +3447,7 @@ function renderSummaryOzon(month, t){
       <div class="kpi"><div class="lbl">Расходы вне Ozon</div><div class="val">${fmt(t.externalTotal)}</div></div>
     </div>
 
-    ${productsForSection(rootState.activeSectionId).length? `<h3 class="subhead">Продажи по товарам</h3><div class="kpi-grid">${productRows}</div>` : ''}
+    ${currentSectionProducts().length? `<h3 class="subhead">Продажи по товарам</h3><div class="kpi-grid">${productRows}</div>` : ''}
 
     <h3 class="subhead">Расходы внутри Ozon за месяц</h3>
     <div class="kpi-grid">
@@ -3427,7 +3468,7 @@ function renderSummaryOzon(month, t){
 function renderSummaryWB(month, t){
   const body = document.getElementById('summaryBody');
 
-  if(month.days.length===0 && sharedProducts.length===0){
+  if(month.days.length===0 && (state.products||[]).length===0){
     body.innerHTML = '<div class="empty-state">Добавьте товары и заполните хотя бы один день, чтобы увидеть итоги.</div>';
     return;
   }
@@ -3435,9 +3476,9 @@ function renderSummaryWB(month, t){
   const wfStep = (lbl,val,cls='')=>`
     <div class="wf-step ${cls}"><div class="lbl">${lbl}</div><div class="val">${fmt(val)} ₽</div></div>`;
 
-  const productRows = productsForSection(rootState.activeSectionId).map(p=>{
+  const productRows = currentSectionProducts().map(p=>{
     const qty = t.salesByProduct[p.id]||0;
-    return `<div class="kpi"><div class="lbl">${escapeHtml(p.name)}</div><div class="val">${fmtQty(qty)} шт · ${fmt(qty*getCurrentProductCost(p))} ₽</div></div>`;
+    return `<div class="kpi"><div class="lbl">${escapeHtml(p.name)}</div><div class="val">${fmtQty(qty)} шт · ${fmt(qty*getCurrentProductCost(p, rootState.activeSectionId))} ₽</div></div>`;
   }).join('');
 
   const externalRows = EXTERNAL_FIELDS.map(([id,label])=>`
@@ -3466,7 +3507,7 @@ function renderSummaryWB(month, t){
       <div class="kpi"><div class="lbl">Расходы вне ВБ</div><div class="val">${fmt(t.externalTotal)}</div></div>
     </div>
 
-    ${productsForSection(rootState.activeSectionId).length? `<h3 class="subhead">Выкуплено по товарам</h3><div class="kpi-grid">${productRows}</div>` : ''}
+    ${currentSectionProducts().length? `<h3 class="subhead">Выкуплено по товарам</h3><div class="kpi-grid">${productRows}</div>` : ''}
 
     <h3 class="subhead">Расходы внутри ВБ за месяц</h3>
     <div class="kpi-grid">
@@ -3496,9 +3537,9 @@ function renderSummaryYM(month, t){
   const wfStep = (lbl,val,cls='')=>`
     <div class="wf-step ${cls}"><div class="lbl">${lbl}</div><div class="val">${fmt(val)} ₽</div></div>`;
 
-  const productRows = productsForSection(rootState.activeSectionId).map(p=>{
+  const productRows = currentSectionProducts().map(p=>{
     const qty = t.salesByProduct[p.id]||0;
-    return `<div class="kpi"><div class="lbl">${escapeHtml(p.name)}</div><div class="val">${fmtQty(qty)} шт · ${fmt(qty*getCurrentProductCost(p))} ₽</div></div>`;
+    return `<div class="kpi"><div class="lbl">${escapeHtml(p.name)}</div><div class="val">${fmtQty(qty)} шт · ${fmt(qty*getCurrentProductCost(p, rootState.activeSectionId))} ₽</div></div>`;
   }).join('');
 
   const externalRows = EXTERNAL_FIELDS.map(([id,label])=>`
@@ -3550,7 +3591,7 @@ function renderSummaryYM(month, t){
 function renderSummarySite(month, t){
   const body = document.getElementById('summaryBody');
 
-  if(month.days.length===0 && sharedProducts.length===0){
+  if(month.days.length===0 && (state.products||[]).length===0){
     body.innerHTML = '<div class="empty-state">Добавьте товары и заполните хотя бы один день, чтобы увидеть итоги.</div>';
     return;
   }
@@ -3558,9 +3599,9 @@ function renderSummarySite(month, t){
   const wfStep = (lbl,val,cls='')=>`
     <div class="wf-step ${cls}"><div class="lbl">${lbl}</div><div class="val">${fmt(val)} ₽</div></div>`;
 
-  const productRows = productsForSection('site').map(p=>{
+  const productRows = currentSectionProducts().map(p=>{
     const qty = t.salesByProduct[p.id]||0;
-    return `<div class="kpi"><div class="lbl">${escapeHtml(p.name)}</div><div class="val">${fmtQty(qty)} шт · ${fmt(qty*getCurrentProductCost(p))} ₽</div></div>`;
+    return `<div class="kpi"><div class="lbl">${escapeHtml(p.name)}</div><div class="val">${fmtQty(qty)} шт · ${fmt(qty*getCurrentProductCost(p, 'site'))} ₽</div></div>`;
   }).join('');
 
   const externalRows = EXTERNAL_FIELDS.map(([id,label])=>`
@@ -3585,7 +3626,7 @@ function renderSummarySite(month, t){
       <div class="kpi"><div class="lbl">Расходы вне Сайта</div><div class="val">${fmt(t.externalTotal)}</div></div>
     </div>
 
-    ${productsForSection('site').length? `<h3 class="subhead">Продажи по товарам</h3><div class="kpi-grid">${productRows}</div>` : ''}
+    ${currentSectionProducts().length? `<h3 class="subhead">Продажи по товарам</h3><div class="kpi-grid">${productRows}</div>` : ''}
 
     <h3 class="subhead">Расходы вне Сайта за месяц</h3>
     <div class="kpi-grid">${externalRows}</div>
@@ -3610,6 +3651,63 @@ function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
+/* ======================= МИГРАЦИЯ СО СТАРОГО ОБЩЕГО КАТАЛОГА ТОВАРОВ =======================
+   До 31.08.2026 себестоимость была общей на весь дашборд (один документ shared:products,
+   товар сопоставлялся артикулом на каждой площадке). Решили отказаться от этого в пользу
+   независимых списков товаров на каждой площадке — проще и без риска ошибочно "склеить"
+   два разных физических товара. Ниже — одноразовый перенос уже накопленных данных: каждый
+   товар из старого каталога раскладывается по тем площадкам, где у него был заполнен
+   артикул (или включена галочка "Сайт"), себестоимость и её история переносятся как есть.
+   Id товара не меняется — он совпадает с тем, что уже записан в salesQty дней этой площадки,
+   поэтому уже введённые продажи не "отвязываются" от товара. Срабатывает один раз на
+   площадку: после переноса раздел помечается productsMigratedFromShared и больше не
+   проверяется повторно. */
+function legacySharedProductCostFor(p, sid){
+  // Старый каталог мог быть в одном из двух форматов: самый старый — общая costHistory на
+  // все площадки; переходный (использовался только в тестовом режиме этого чата 31.08.2026,
+  // в бой не выкатывался) — costBySection{площадка:[...]}. Поддерживаем оба.
+  if(p.costBySection && p.costBySection[sid] && p.costBySection[sid].length) return p.costBySection[sid].map(h=>({date:h.date, cost:h.cost}));
+  if(p.costHistory && p.costHistory.length) return p.costHistory.map(h=>({date:h.date, cost:h.cost}));
+  if(p.cost!==undefined) return [{date:'1970-01-01', cost:num(p.cost)}];
+  return [];
+}
+function legacySharedProductHasSection(p, sid){
+  if(sid==='site') return !!p.includeInSite;
+  return splitArticles((p.articles||{})[sid]).length>0;
+}
+function legacySharedProductSkuFor(p, sid){
+  return sid==='site' ? '' : ((p.articles||{})[sid]||'');
+}
+async function migrateProductsFromLegacySharedCatalog(){
+  let legacy = null;
+  try{ legacy = await storeGet('shared:products'); }catch(e){ return; } // не смогли прочитать — попробуем при следующей загрузке, не рискуем
+  if(!Array.isArray(legacy) || legacy.length===0) return; // нечего переносить (или уже перенесено и вычищено)
+
+  for(const cfg of SECTIONS_CONFIG){
+    const sid = cfg.id;
+    const data = rootState.sections[sid];
+    if(!data || (rootState.loadFailed && rootState.loadFailed.has(sid)) || data.productsMigratedFromShared) continue;
+    const toAdd = [];
+    legacy.forEach(p=>{
+      if(!legacySharedProductHasSection(p, sid)) return;
+      toAdd.push({
+        id: p.id, // тот же id, что уже в salesQty этой площадки — иначе продажи отвяжутся от товара
+        name: p.name,
+        sku: legacySharedProductSkuFor(p, sid),
+        costHistory: legacySharedProductCostFor(p, sid)
+      });
+    });
+    const applyChange = (sectionData)=>{
+      if(sectionData.productsMigratedFromShared) return; // кто-то уже перенёс параллельно — не дублируем
+      const existingIds = new Set((sectionData.products||[]).map(x=>x.id));
+      toAdd.forEach(m=>{ if(!existingIds.has(m.id)) sectionData.products.push(m); });
+      sectionData.productsMigratedFromShared = true;
+    };
+    applyChange(data); // мгновенно локально
+    await commitSectionChange(sid, applyChange);
+  }
+}
+
 /* ======================= BOOT ======================= */
 async function startApp(){
   rootState = await loadRootAsync();
@@ -3620,33 +3718,8 @@ async function startApp(){
     }).join(', ');
     showFbError('Не удалось загрузить данные раздела(ов): '+names+'. Ничего не тронуто и не перезаписано — сохранение в них заблокировано до успешной перезагрузки. Обновите страницу (Ctrl+F5). Если не поможет за 1-2 попытки — не вносите туда данные и сообщите разработчику.');
   }
-  await loadSharedProducts();
   await loadDdsImportMap();
-
-  // Одноразовая подстраховка при введении галочки "Сайт": если товар уже фигурировал
-  // в продажах раздела "Сайт" (были заполненные количества), включаем галочку автоматически,
-  // чтобы уже введённые данные не "пропали из виду" молча.
-  // Это срабатывает при КАЖДОЙ загрузке дашборда у КАЖДОГО сотрудника — поэтому идёт через
-  // безопасный коммит, а не напрямую: иначе, если кто-то в этот момент в другой вкладке
-  // добавляет/правит товар, эта проверка могла бы стереть его правку целым каталогом поверх.
-  const siteSection = rootState.sections.site;
-  if(siteSection){
-    const idsToFlag = new Set();
-    Object.values(siteSection.months||{}).forEach(month=>{
-      (month.days||[]).forEach(day=>{
-        Object.entries(day.salesQty||{}).forEach(([pid, qty])=>{
-          if(num(qty)!==0) idsToFlag.add(pid);
-        });
-      });
-    });
-    if(idsToFlag.size>0){
-      const applyChange = (products)=>{
-        products.forEach(p=>{ if(idsToFlag.has(p.id) && !p.includeInSite) p.includeInSite = true; });
-      };
-      applyChange(sharedProducts); // мгновенно локально
-      commitSharedProductsChange(applyChange); // и надёжно, поверх самой свежей версии каталога
-    }
-  }
+  await migrateProductsFromLegacySharedCatalog(); // одноразовый перенос себестоимости в списки по площадкам (см. выше)
 
   // если у какого-то раздела ещё нет ни одного месяца — создаём текущий и сохраняем именно этот раздел.
   // Последовательно, не Promise.all: при первом запуске на пустом хранилище это может быть сразу
@@ -3667,6 +3740,57 @@ async function startApp(){
   renderDaily();
   renderSummary();
   showView('section');
+  renderMissingCostModal(); // список товаров без себестоимости — если есть, покажем поверх всего
+}
+
+// Собирает товары без единой заполненной себестоимости по ВСЕМ площадкам (не только текущей
+// открытой) — чтобы не пропустить, если такое случилось на площадке, которую сейчас никто
+// не смотрит (типичная причина — автодобавление из импорта).
+function findProductsMissingCost(){
+  const result = [];
+  SECTIONS_CONFIG.forEach(cfg=>{
+    const data = rootState.sections[cfg.id];
+    if(!data) return;
+    (data.products||[]).forEach(p=>{
+      if(!((p.costHistory||[]).length)) result.push({productId:p.id, productName:p.name, sectionId:cfg.id, sectionLabel:cfg.label});
+    });
+  });
+  return result;
+}
+
+// Показывается при каждом входе в дашборд, пока остаются товары без себестоимости —
+// закрыть можно (не мешать текущей задаче), но при следующем открытии дашборда всплывёт
+// снова, пока себестоимость действительно не заполнят (не просто разово скрыть навсегда).
+function renderMissingCostModal(){
+  const backdrop = document.getElementById('missingCostBackdrop');
+  const items = findProductsMissingCost();
+  if(items.length===0){ backdrop.style.display = 'none'; return; }
+  document.getElementById('missingCostCount').textContent = items.length;
+  document.getElementById('missingCostList').innerHTML = items.map(it=>`
+    <div class="missing-cost-row">
+      <div class="missing-cost-info">
+        <span class="missing-cost-name">${escapeHtml(it.productName)}</span>
+        <span class="missing-cost-platform">${escapeHtml(it.sectionLabel)}</span>
+      </div>
+      <button class="save-btn" onclick="jumpToMissingCost('${it.sectionId}','${it.productId}')">Заполнить</button>
+    </div>
+  `).join('');
+  backdrop.style.display = 'flex';
+}
+function closeMissingCostModal(){
+  document.getElementById('missingCostBackdrop').style.display = 'none';
+}
+// Переходит сразу к нужному товару на нужной площадке во вкладке "Товары" и открывает
+// форму задания себестоимости, чтобы не искать вручную.
+async function jumpToMissingCost(sectionId, productId){
+  closeMissingCostModal();
+  productsPanelSectionId = sectionId;
+  openProductEdit = productId;
+  await refreshSectionData(sectionId);
+  renderProducts();
+  showView('products');
+  const input = document.getElementById('costValue-'+productId);
+  if(input) input.focus();
 }
 
 function showLogin(){
