@@ -30,6 +30,8 @@
   --c-outside:#fbeef0;   --b-outside:#d16f86;
   --c-selfbuy:#eef1f5;   --b-selfbuy:#7c8798;
   --c-result:#eaf7ee;    --b-result:#4a9a5c;
+
+  --et-c1:#f0a83d;  --et-c2:#8b6fd1;  --et-c3:#4fc3d9;  --et-c4:#6b7fd8;
 }
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--sans);}
@@ -168,7 +170,11 @@ input,select{font-family:var(--sans);}
 .pc-edit-form input{border:1px solid var(--line);border-radius:7px;padding:7px 9px;font-size:12.5px;font-family:var(--mono);}
 .pc-edit-form input[type=date]{width:150px;}
 .pc-edit-form input[type=number]{width:130px;}
-.pc-history{margin-top:8px;font-size:11px;color:var(--ink-dim);font-family:var(--mono);line-height:1.6;}
+.pc-history{margin-top:8px;font-size:11px;color:var(--ink-dim);font-family:var(--mono);}
+.pc-history-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:3px 0;line-height:1.5;}
+.pc-history-actions{display:flex;gap:4px;flex-shrink:0;}
+.pc-history-actions button{border:none;background:none;color:var(--ink-dim);cursor:pointer;font-size:12px;padding:1px 4px;border-radius:4px;font-family:var(--sans);}
+.pc-history-actions button:hover{color:var(--accent);background:var(--line);}
 .pc-articles{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);}
 .pc-articles-title{
   font-size:11.5px;color:var(--ink-dim);cursor:pointer;user-select:none;
@@ -190,6 +196,14 @@ input,select{font-family:var(--sans);}
 .products-header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
 .products-header h2{margin:0;}
 #productsSectionSelect{border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:13px;font-family:var(--sans);background:#fff;}
+#selfBuysSectionSelect{border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:13px;font-family:var(--sans);background:#fff;}
+.selfbuy-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:14px;align-items:end;}
+.selfbuy-row{display:flex;flex-direction:column;gap:5px;}
+.selfbuy-row label{font-size:11.5px;color:var(--ink-dim);}
+.selfbuy-row input,.selfbuy-row select{border:1px solid var(--line);border-radius:7px;padding:8px 10px;font-size:13px;font-family:var(--sans);background:#fff;}
+.selfbuy-cost-preview{font-family:var(--mono);font-size:15px;font-weight:650;color:var(--navy);padding:8px 0;}
+.selfbuy-form .save-btn{align-self:end;height:37px;}
+.selfbuy-day-info{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink-dim);}
 .missing-cost-backdrop{position:fixed;inset:0;background:rgba(20,24,35,0.55);display:flex;align-items:center;justify-content:center;z-index:500;padding:20px;}
 .missing-cost-modal{background:#fff;border-radius:12px;max-width:640px;width:100%;max-height:80vh;display:flex;flex-direction:column;padding:22px 24px;box-shadow:0 20px 50px rgba(0,0,0,0.25);}
 .missing-cost-modal h2{margin:0 0 8px;font-size:18px;}
@@ -323,6 +337,24 @@ tr.row-result td.metric-label{background:var(--c-result);}
 .wf-step.final .val{color:var(--navy);}
 
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:14px;}
+
+/* ---------- Термометр расходов внутри площадки ---------- */
+.expense-thermometer{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-top:14px;}
+.et-total{display:flex;align-items:baseline;justify-content:space-between;}
+.et-total-label{font-size:11px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.03em;}
+.et-total-val{font-family:var(--mono);font-size:18px;font-weight:650;color:var(--navy);}
+.et-bar{display:flex;width:100%;height:14px;border-radius:7px;background:var(--bg);overflow:hidden;margin-top:14px;border:1px solid var(--line);}
+.et-seg{height:100%;cursor:pointer;}
+.et-seg:first-child{border-top-left-radius:6px;border-bottom-left-radius:6px;}
+.et-seg:last-child{border-top-right-radius:6px;border-bottom-right-radius:6px;}
+.et-legend{margin-top:14px;display:flex;flex-direction:column;gap:9px;}
+.et-legend-row{display:flex;align-items:center;gap:9px;font-size:11px;cursor:pointer;border-radius:6px;padding:3px 4px;margin:-3px -4px;}
+.et-legend-row:hover{background:var(--bg);}
+.et-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.et-legend-label{flex:1;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.03em;}
+.et-legend-val{font-family:var(--mono);font-weight:650;color:var(--navy);}
+.et-footnote{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink-dim);}
+.et-footnote b{color:var(--navy);font-weight:650;}
 .kpi{background:#f6f7fa;border:1px solid var(--line);border-radius:8px;padding:12px 14px;}
 .kpi .lbl{font-size:11px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.03em;}
 .kpi .val{font-family:var(--mono);font-size:18px;font-weight:650;margin-top:4px;}
@@ -398,6 +430,7 @@ h3.subhead{font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:
   <div class="section-bar" id="sectionBar"></div>
   <div style="display:flex;gap:8px;">
     <button class="section-btn type-catalog" id="productsToggleBtn" onclick="toggleProducts()">Товары</button>
+    <button class="section-btn type-catalog" id="selfBuysToggleBtn" onclick="toggleSelfBuys()">Самовыкупы</button>
     <button class="section-btn type-catalog" id="ddsToggleBtn" onclick="toggleDds()">Расходы вне МП</button>
     <button class="section-btn type-help" id="helpToggleBtn" onclick="toggleHelp()">Справка</button>
   </div>
@@ -475,10 +508,13 @@ h3.subhead{font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:
       <select id="productsSectionSelect" onchange="switchProductsPanelSection(this.value)">
         <option value="ozon_sekai">OZON SEKAI</option>
         <option value="ozon_meld">OZON MELD</option>
+        <option value="ozon_ooo_meld">OZON OOO MELD</option>
         <option value="wb_sekai">WB SEKAI</option>
         <option value="wb_meld">WB MELD</option>
+        <option value="wb_ooo_meld">WB OOO MELD</option>
         <option value="ym_sekai">ЯМ SEKAI</option>
         <option value="ym_meld">ЯМ MELD</option>
+        <option value="ym_ooo_meld">ЯМ OOO MELD</option>
         <option value="site">Сайт</option>
       </select>
     </div>
@@ -489,6 +525,52 @@ h3.subhead{font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:
       <input type="number" name="pcost" id="newPCost" placeholder="Себестоимость, ₽" step="0.01">
       <button onclick="addProduct()">+ Добавить товар</button>
     </div>
+  </div>
+</div>
+
+<div class="wrap" id="selfBuysPanel" style="display:none;">
+  <div class="panel">
+    <div class="products-header">
+      <h2>Самовыкупы</h2>
+      <select id="selfBuysSectionSelect" onchange="switchSelfBuysPanelSection(this.value)">
+        <option value="ozon_sekai">OZON SEKAI</option>
+        <option value="ozon_meld">OZON MELD</option>
+        <option value="ozon_ooo_meld">OZON OOO MELD</option>
+        <option value="wb_sekai">WB SEKAI</option>
+        <option value="wb_meld">WB MELD</option>
+        <option value="wb_ooo_meld">WB OOO MELD</option>
+        <option value="ym_sekai">ЯМ SEKAI</option>
+        <option value="ym_meld">ЯМ MELD</option>
+        <option value="ym_ooo_meld">ЯМ OOO MELD</option>
+      </select>
+    </div>
+    <p class="desc">Запись добавляется к сумме и себестоимости самовыкупов выбранного дня — тем же полям, что видны во вкладке «Ежедневные данные» (группа «Самовыкупы»).</p>
+
+    <div class="selfbuy-form">
+      <div class="selfbuy-row">
+        <label>Дата</label>
+        <input type="date" id="sbDate" onchange="renderSelfBuysCostPreview(); renderSelfBuysDayInfo();">
+      </div>
+      <div class="selfbuy-row">
+        <label>Сумма затрат на самовыкупы, ₽</label>
+        <input type="number" id="sbSum" step="0.01" placeholder="0">
+      </div>
+      <div class="selfbuy-row">
+        <label>Количество, шт</label>
+        <input type="number" id="sbQty" step="1" placeholder="0" oninput="renderSelfBuysCostPreview()">
+      </div>
+      <div class="selfbuy-row">
+        <label>Товар</label>
+        <select id="sbProduct" onchange="renderSelfBuysCostPreview()"></select>
+      </div>
+      <div class="selfbuy-row">
+        <label>Себестоимость самовыкупов</label>
+        <div class="selfbuy-cost-preview" id="sbCostPreview">0,00 ₽</div>
+      </div>
+      <button class="save-btn" onclick="saveSelfBuy()">Сохранить</button>
+    </div>
+
+    <div id="selfBuysDayInfo" class="selfbuy-day-info"></div>
   </div>
 </div>
 
@@ -763,10 +845,13 @@ function resolveDdsDirection(raw){
 const SECTIONS_CONFIG = [
   {id:'ozon_sekai', label:'OZON SEKAI', type:'ozon'},
   {id:'ozon_meld',  label:'OZON MELD',  type:'ozon'},
+  {id:'ozon_ooo_meld', label:'OZON OOO MELD', type:'ozon'},
   {id:'wb_sekai',   label:'WB SEKAI',   type:'wb'},
   {id:'wb_meld',    label:'WB MELD',    type:'wb'},
+  {id:'wb_ooo_meld', label:'WB OOO MELD', type:'wb'},
   {id:'ym_sekai',   label:'ЯМ SEKAI',   type:'ym'},
   {id:'ym_meld',    label:'ЯМ MELD',    type:'ym'},
+  {id:'ym_ooo_meld', label:'ЯМ OOO MELD', type:'ym'},
   {id:'site',       label:'Сайт',       type:'site'},
 ];
 function getSectionConfig(id){ return SECTIONS_CONFIG.find(s=>s.id===id); }
@@ -1017,11 +1102,13 @@ function showView(mode){
     document.querySelectorAll('#sectionBar .section-btn').forEach(b=>b.classList.remove('active'));
   }
   document.getElementById('productsPanel').style.display = mode==='products' ? 'block' : 'none';
+  document.getElementById('selfBuysPanel').style.display = mode==='selfbuys' ? 'block' : 'none';
   document.getElementById('ddsPanel').style.display = mode==='dds' ? 'block' : 'none';
   document.getElementById('helpPanel').style.display = mode==='help' ? 'block' : 'none';
   document.getElementById('tabsBar').style.display = mode==='section' ? '' : 'none';
   document.getElementById('mainWrap').style.display = mode==='section' ? '' : 'none';
   document.getElementById('productsToggleBtn').classList.toggle('active', mode==='products');
+  document.getElementById('selfBuysToggleBtn').classList.toggle('active', mode==='selfbuys');
   document.getElementById('ddsToggleBtn').classList.toggle('active', mode==='dds');
   document.getElementById('helpToggleBtn').classList.toggle('active', mode==='help');
 }
@@ -1324,6 +1411,10 @@ document.addEventListener('keydown', function(e){
    слишком легко ошибиться при автосопоставлении, а ручное объединение усложняло интерфейс
    без реальной необходимости). */
 let openProductEdit = null; // id товара, у которого сейчас открыта форма корректировки себестоимости
+// Если сейчас редактируется КОНКРЕТНАЯ уже сохранённая запись истории (а не добавляется
+// новая) — здесь её исходная дата. Нужна, чтобы при сохранении, если дату поменяли,
+// перенести запись (удалить старую, добавить новую), а не задвоить её.
+let editingEntryDate = null;
 let productIdCounter = 0;
 
 // Свёрнутые группы строк в таблице ежедневных данных (сейчас — только "Товары", т.к. список
@@ -1399,7 +1490,20 @@ function renderProducts(){
     const isOpen = openProductEdit===p.id;
     // Хронологический порядок — от новой даты к старой, независимо от того, в каком порядке
     // корректировки вносились (даже если запись за более раннюю дату добавили позже остальных).
-    const historyLines = hist.slice().reverse().map(h=>`с ${fmtDate(h.date)} — ${fmt(h.cost)} ₽`).join('<br>');
+    // У каждой записи — свои кнопки "изменить" и "удалить", не только у списка в целом.
+    const historyRows = hist.slice().reverse().map(h=>`
+      <div class="pc-history-row">
+        <span>с ${fmtDate(h.date)} — ${fmt(h.cost)} ₽</span>
+        <span class="pc-history-actions">
+          <button onclick="editCostEntry('${p.id}','${h.date}',${h.cost})" title="Изменить эту запись">✎</button>
+          <button onclick="deleteCostEntry('${p.id}','${h.date}')" title="Удалить эту запись">×</button>
+        </span>
+      </div>`).join('');
+    // Если сейчас редактируем именно существующую запись (а не добавляем новую) — форма
+    // предзаполняется её датой и суммой, а не сегодняшним днём и пустым полем.
+    const isEditingEntry = isOpen && editingEntryDate!==null;
+    const formDate = isEditingEntry ? editingEntryDate : today;
+    const formCost = isEditingEntry ? (hist.find(h=>h.date===editingEntryDate)||{}).cost : '';
     return `
     <div class="product-card">
       <div class="pc-head">
@@ -1420,18 +1524,42 @@ function renderProducts(){
       </div>
       <button class="pc-toggle" onclick="toggleProductEdit('${p.id}')">${isOpen?'Отменить':(hasCost?'Скорректировать':'Задать себестоимость')}</button>
       <div class="pc-edit-form ${isOpen?'open':''}">
-        <input type="date" id="costDate-${p.id}" value="${today}">
-        <input type="number" id="costValue-${p.id}" step="0.01" placeholder="Новая себестоимость, ₽">
+        <input type="date" id="costDate-${p.id}" value="${formDate}">
+        <input type="number" id="costValue-${p.id}" step="0.01" placeholder="Новая себестоимость, ₽" value="${formCost}">
         <button class="save-btn" id="costSaveBtn-${p.id}" onclick="saveCost('${p.id}')">Сохранить</button>
       </div>
-      ${hist.length>1?`<div class="pc-history">${historyLines}</div>`:''}
+      ${hist.length>0?`<div class="pc-history">${historyRows}</div>`:''}
     </div>`;
   }).join('');
 }
 
 function toggleProductEdit(id){
   openProductEdit = (openProductEdit===id) ? null : id;
+  editingEntryDate = null; // открыли основную кнопку "Скорректировать" — это всегда добавление новой записи, не правка существующей
   renderProducts();
+}
+
+// Открывает форму корректировки, предзаполненную конкретной уже сохранённой записью —
+// в отличие от toggleProductEdit (всегда "добавить новую"), это "изменить именно эту".
+function editCostEntry(id, date, cost){
+  openProductEdit = id;
+  editingEntryDate = date;
+  renderProducts();
+}
+
+// Удаляет одну конкретную запись истории себестоимости (не весь товар).
+function deleteCostEntry(id, date){
+  if(!confirm('Удалить эту запись себестоимости («с '+fmtDate(date)+'»)? Если это единственная запись — у товара снова появится подсказка "заполните себестоимость".')) return;
+  const sectionId = productsPanelSectionId;
+  const applyChange = (sectionData)=>{
+    const p = sectionData.products.find(p=>p.id===id);
+    if(p) p.costHistory = (p.costHistory||[]).filter(h=>h.date!==date);
+  };
+  applyChange(productsPanelData());
+  if(openProductEdit===id && editingEntryDate===date){ openProductEdit=null; editingEntryDate=null; } // редактировали как раз то, что удалили
+  renderProducts();
+  if(sectionId===rootState.activeSectionId){ renderDaily(); renderSummary(); }
+  commitSectionChange(sectionId, applyChange);
 }
 
 function addProduct(){
@@ -1499,15 +1627,24 @@ function saveCost(id){
   const costVal = parseFloat(document.getElementById('costValue-'+id).value);
   if(!dateVal || isNaN(costVal)){ alert('Укажите дату и новую себестоимость.'); return; }
   const sectionId = productsPanelSectionId;
+  // Если редактируем существующую запись (editingEntryDate) и дату при этом поменяли —
+  // это не "добавить ещё одну", а "перенести" запись: сначала убираем старую по прежней
+  // дате, потом (внутри upsertCostHistory) добавляем/обновляем по новой.
+  const originalDate = editingEntryDate;
   const applyChange = (sectionData)=>{
     const p = sectionData.products.find(p=>p.id===id);
-    if(p) upsertCostHistory(p, dateVal, costVal);
+    if(!p) return;
+    if(originalDate && originalDate!==dateVal){
+      p.costHistory = (p.costHistory||[]).filter(h=>h.date!==originalDate);
+    }
+    upsertCostHistory(p, dateVal, costVal);
   };
   flashSaveButton(btn, async ()=>{
     applyChange(productsPanelData()); // мгновенно локально
     return await commitSectionChange(sectionId, applyChange); // и надёжно, поверх самой свежей версии раздела
   }, ()=>{
     openProductEdit = null;
+    editingEntryDate = null;
     // Пересчёт всей таблицы дней и итогов происходит здесь автоматически: getProductCostAt
     // читает costHistory заново при каждом вызове, поэтому себестоимость "задним числом"
     // сразу применяется ко всем прошлым и будущим дням этой площадки, без отдельного шага.
@@ -1515,6 +1652,133 @@ function saveCost(id){
     if(sectionId===rootState.activeSectionId){ renderDaily(); renderSummary(); }
     if(document.getElementById('missingCostBackdrop').style.display!=='none') renderMissingCostModal(); // если окно открыто фоном — обновим список
   });
+}
+
+/* ======================= SELF-BUYS (Самовыкупы) =======================
+   Отдельный раздел рядом с "Товары" — вносим самовыкуп (дата, сумма затрат, количество,
+   товар), себестоимость считается автоматически (количество × себестоимость товара на
+   ЭТУ дату), и результат ДОБАВЛЯЕТСЯ к полям selfBuyRub/selfBuyCost того дня во вкладке
+   "Ежедневные данные" — тем же полям, что уже участвуют в расчёте маржи (см. calcDay*).
+   Можно вносить несколько записей за один день (для разных товаров) — суммы копятся,
+   не перезаписываются. У "Сайта" самовыкупов нет (там нет полей selfBuyRub/selfBuyCost
+   в принципе — см. newDayRow), поэтому раздел его не предлагает. */
+const SELFBUY_SECTIONS = ['ozon_sekai','ozon_meld','ozon_ooo_meld','wb_sekai','wb_meld','wb_ooo_meld','ym_sekai','ym_meld','ym_ooo_meld'];
+
+// Площадка, выбранная внутри вкладки "Самовыкупы" — как и у "Товары", независима от
+// переключателя разделов в шапке.
+let selfBuysPanelSectionId = null;
+
+async function toggleSelfBuys(){
+  const opening = document.getElementById('selfBuysPanel').style.display !== 'block';
+  if(opening){
+    if(!selfBuysPanelSectionId){
+      selfBuysPanelSectionId = SELFBUY_SECTIONS.includes(rootState.activeSectionId) ? rootState.activeSectionId : SELFBUY_SECTIONS[0];
+    }
+    await refreshSectionData(selfBuysPanelSectionId);
+    const dateEl = document.getElementById('sbDate');
+    if(dateEl && !dateEl.value) dateEl.value = todayStr();
+    renderSelfBuysPanel();
+  }
+  showView(opening ? 'selfbuys' : 'section');
+}
+
+async function switchSelfBuysPanelSection(sid){
+  if(sid===selfBuysPanelSectionId) return;
+  selfBuysPanelSectionId = sid;
+  await refreshSectionData(sid);
+  renderSelfBuysPanel();
+}
+
+function renderSelfBuysPanel(){
+  const selectEl = document.getElementById('selfBuysSectionSelect');
+  if(selectEl) selectEl.value = selfBuysPanelSectionId;
+  const data = rootState.sections[selfBuysPanelSectionId] || {products:[]};
+  const products = (data.products||[]).slice().sort((a,b)=>a.name.localeCompare(b.name,'ru'));
+  const productSelect = document.getElementById('sbProduct');
+  if(productSelect){
+    const prevValue = productSelect.value;
+    productSelect.innerHTML = products.length
+      ? products.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('')
+      : '<option value="">Нет товаров на этой площадке</option>';
+    if(products.some(p=>p.id===prevValue)) productSelect.value = prevValue;
+  }
+  renderSelfBuysCostPreview();
+  renderSelfBuysDayInfo();
+}
+
+// Живой пересчёт "Себестоимость самовыкупов" по мере ввода количества/выбора товара —
+// количество × себестоимость выбранного товара НА УКАЗАННУЮ ДАТУ (не текущую себестоимость,
+// как и везде в дашборде — себестоимость датированная).
+function renderSelfBuysCostPreview(){
+  const previewEl = document.getElementById('sbCostPreview');
+  if(!previewEl) return;
+  const data = rootState.sections[selfBuysPanelSectionId];
+  const qty = num(document.getElementById('sbQty').value);
+  const productId = document.getElementById('sbProduct').value;
+  const dateVal = document.getElementById('sbDate').value || todayStr();
+  const product = data && (data.products||[]).find(p=>p.id===productId);
+  const costPerUnit = product ? getProductCostAt(product, dateVal) : 0;
+  const total = qty * costPerUnit;
+  previewEl.textContent = fmt(total) + ' ₽' + (product && qty>0 ? ` (${fmtQty(qty)} шт × ${fmt(costPerUnit)} ₽)` : '');
+}
+
+// Показывает, сколько самовыкупов УЖЕ накоплено за выбранную дату — чтобы было видно
+// текущий итог по дню, а не только то, что вот-вот добавится сверху.
+function renderSelfBuysDayInfo(){
+  const infoEl = document.getElementById('selfBuysDayInfo');
+  const data = rootState.sections[selfBuysPanelSectionId];
+  if(!infoEl || !data) return;
+  const dateVal = document.getElementById('sbDate').value || todayStr();
+  const monthKey = dateVal.slice(0,7);
+  const month = data.months && data.months[monthKey];
+  const day = month && month.days.find(d=>d.date===dateVal);
+  const sumSoFar = day ? num(day.selfBuyRub) : 0;
+  const costSoFar = day ? num(day.selfBuyCost) : 0;
+  infoEl.textContent = `Уже накоплено за ${fmtDate(dateVal)} на этой площадке: сумма затрат ${fmt(sumSoFar)} ₽, себестоимость ${fmt(costSoFar)} ₽.`;
+}
+
+async function saveSelfBuy(){
+  const sectionId = selfBuysPanelSectionId;
+  const type = getSectionConfig(sectionId).type;
+  const dateVal = document.getElementById('sbDate').value;
+  const sumVal = num(document.getElementById('sbSum').value);
+  const qtyVal = num(document.getElementById('sbQty').value);
+  const productId = document.getElementById('sbProduct').value;
+  if(!dateVal){ alert('Укажите дату.'); return; }
+  if(sumVal===0 && qtyVal===0){ alert('Укажите сумму затрат и/или количество.'); return; }
+
+  const data = rootState.sections[sectionId];
+  const product = productId ? (data.products||[]).find(p=>p.id===productId) : null;
+  const costPerUnit = product ? getProductCostAt(product, dateVal) : 0;
+  const costAdd = round2(qtyVal * costPerUnit);
+
+  // Мутатор — "добавить эту сумму и эту себестоимость к самовыкупам такого-то дня" —
+  // применяем и мгновенно локально, и надёжно поверх самой свежей версии раздела (тот же
+  // принцип, что и во всех остальных правках дней).
+  const applyChange = (sectionData)=>{
+    const monthKey = dateVal.slice(0,7);
+    const month = ensureMonth(monthKey, sectionData, type);
+    let day = month.days.find(d=>d.date===dateVal);
+    if(!day){
+      day = newDayRow(dateVal, type);
+      month.days.push(day);
+      month.days.sort((a,b)=>a.date.localeCompare(b.date));
+    }
+    day.selfBuyRub = round2(num(day.selfBuyRub) + sumVal);
+    day.selfBuyCost = round2(num(day.selfBuyCost) + costAdd);
+  };
+
+  applyChange(data); // мгновенно локально
+  document.getElementById('sbSum').value = '';
+  document.getElementById('sbQty').value = '';
+  renderSelfBuysCostPreview();
+  renderSelfBuysDayInfo();
+  if(sectionId===rootState.activeSectionId){
+    populateMonthSelectors();
+    renderDaily();
+    renderSummary();
+  }
+  await commitSectionChange(sectionId, applyChange);
 }
 
 /* ======================= TAX RATE ======================= */
@@ -1671,7 +1935,7 @@ function calcDayOzon(day){
 
   const netToAccount = salesRub - reward - num(day.logistics) - num(day.fines) - num(day.storage)
                         - num(day.otherExpenses) - adSpend + num(day.extraPayments);
-  const drr = salesRub===0 ? null : adSpend/salesRub;
+  const drr = num(day.orderedRub)===0 ? null : adSpend/num(day.orderedRub);
 
   const selfBuyRub = num(day.selfBuyRub);
   const selfBuyCost = num(day.selfBuyCost);
@@ -1710,7 +1974,7 @@ function calcDayWB(day){
 
   const netToAccount = boughtNetRub - logistics - fines - storage - paidAcceptance + extraPayments - otherExpenses;
   const adsMemo = num(day.adsMemo);
-  const drr = salesRub===0 ? null : adsMemo/salesRub;
+  const drr = num(day.orderedRub)===0 ? null : adsMemo/num(day.orderedRub);
 
   const selfBuyRub = num(day.selfBuyRub);
   const selfBuyCost = num(day.selfBuyCost);
@@ -1748,7 +2012,7 @@ function calcDayYM(day){
 
   const netToAccount = salesRub - commission - logistics - fines - storage - paidAcceptance
                         + extraPayments - otherExpenses - adSpend;
-  const drr = salesRub===0 ? null : adSpend/salesRub;
+  const drr = num(day.orderedRub)===0 ? null : adSpend/num(day.orderedRub);
 
   const selfBuyRub = num(day.selfBuyRub);
   const selfBuyCost = num(day.selfBuyCost);
@@ -3282,9 +3546,11 @@ function computeMonthTotalsOzon(key){
     EXTERNAL_FIELDS.forEach(([id])=>{ externalByField[id] += num((day.external||{})[id]); });
   });
 
-  // ДРР месяца — взвешенный (реклама/выручка за весь месяц), а не среднее дневных ДРР:
-  // среднее по дням завышает результат, если в дни с маленькой выручкой ДРР был выше.
-  const avgDrr = totals.salesRub===0 ? null : totals.adSpend/totals.salesRub;
+  // ДРР месяца — взвешенный (реклама/сумма заказов за весь месяц), а не среднее дневных ДРР:
+  // среднее по дням завышает результат, если в дни с маленькими заказами ДРР был выше.
+  // Считаем от заказанного, а не от продаж — это ближе к реальной эффективности рекламы
+  // (реклама влияет на заказ, а не на то, что из заказанного потом реализовалось).
+  const avgDrr = totals.orderedRub===0 ? null : totals.adSpend/totals.orderedRub;
   const marginality = totals.salesRub===0? null : totals.ebitda/totals.salesRub;
 
   return {...totals, avgDrr, salesByProduct, externalByField, marginality};
@@ -3329,8 +3595,9 @@ function computeMonthTotalsWB(key){
     EXTERNAL_FIELDS.forEach(([id])=>{ externalByField[id] += num((day.external||{})[id]); });
   });
 
-  // ДРР месяца — взвешенный (реклама/выручка за весь месяц), не среднее дневных ДРР.
-  const avgDrr = totals.salesRub===0 ? null : totals.adsMemo/totals.salesRub;
+  // ДРР месяца — взвешенный (реклама/сумма заказов за весь месяц), не среднее дневных ДРР.
+  // Считаем от заказанного, а не от продаж — ближе к реальной эффективности рекламы.
+  const avgDrr = totals.orderedRub===0 ? null : totals.adsMemo/totals.orderedRub;
   const marginality = totals.salesRub===0? null : totals.ebitda/totals.salesRub;
 
   return {...totals, avgDrr, salesByProduct, externalByField, marginality};
@@ -3374,8 +3641,9 @@ function computeMonthTotalsYM(key){
     EXTERNAL_FIELDS.forEach(([id])=>{ externalByField[id] += num((day.external||{})[id]); });
   });
 
-  // ДРР месяца — взвешенный (реклама/выручка за весь месяц), не среднее дневных ДРР.
-  const avgDrr = totals.salesRub===0 ? null : totals.adSpend/totals.salesRub;
+  // ДРР месяца — взвешенный (реклама/сумма заказов за весь месяц), не среднее дневных ДРР.
+  // Считаем от заказанного, а не от продаж — ближе к реальной эффективности рекламы.
+  const avgDrr = totals.orderedRub===0 ? null : totals.adSpend/totals.orderedRub;
   const marginality = totals.salesRub===0? null : totals.ebitda/totals.salesRub;
 
   return {...totals, avgDrr, salesByProduct, externalByField, marginality};
@@ -3446,7 +3714,7 @@ function renderSummaryOzon(month, t){
   body.innerHTML = `
     <h3 class="subhead">Каскад P&amp;L</h3>
     <div class="waterfall">
-      ${wfStep('Продажа, ₽', t.salesRub)}
+      ${wfStep('Продажа, ₽', t.salesRub, '')}
       ${wfStep('Доход на р/с', t.netToAccount, t.netToAccount>=0?'good':'bad')}
       ${wfStep('Маржа', t.margin, t.margin>=0?'good':'bad')}
       ${wfStep('Налог', t.tax, 'tax')}
@@ -3462,12 +3730,14 @@ function renderSummaryOzon(month, t){
       <div class="kpi"><div class="lbl">ДРР, % (сред.)</div><div class="val">${t.avgDrr===null?'—':fmt(t.avgDrr*100)+'%'}</div></div>
       <div class="kpi"><div class="lbl">Реклама, ₽</div><div class="val">${fmt(t.adSpend)}</div></div>
       <div class="kpi"><div class="lbl">Себестоимость проданного</div><div class="val">${fmt(t.cogs)}</div></div>
+      <div class="kpi"><div class="lbl">Расходы внутри Ozon</div><div class="val">${fmt(t.reward+t.logistics+t.fines+t.extraPayments+t.storage+t.otherExpenses+t.adSpend)}</div></div>
       <div class="kpi"><div class="lbl">Расходы вне Ozon</div><div class="val">${fmt(t.externalTotal)}</div></div>
     </div>
 
     ${currentSectionProducts().length? `<h3 class="subhead">Продажи по товарам</h3><div class="kpi-grid">${productRows}</div>` : ''}
 
     <h3 class="subhead">Расходы внутри Ozon за месяц</h3>
+    ${renderExpenseThermometer(t, 'ozon')}
     <div class="kpi-grid">
       <div class="kpi"><div class="lbl">Вознаграждение</div><div class="val">${fmt(t.reward)}</div></div>
       <div class="kpi"><div class="lbl">Логистика</div><div class="val">${fmt(t.logistics)}</div></div>
@@ -3506,7 +3776,7 @@ function renderSummaryWB(month, t){
   body.innerHTML = `
     <h3 class="subhead">Каскад P&amp;L</h3>
     <div class="waterfall">
-      ${wfStep('Продажа, ₽', t.salesRub)}
+      ${wfStep('Продажа, ₽', t.salesRub, '')}
       ${wfStep('Доход на р/с', t.netToAccount, t.netToAccount>=0?'good':'bad')}
       ${wfStep('Маржа', t.margin, t.margin>=0?'good':'bad')}
       ${wfStep('Налог', t.tax, 'tax')}
@@ -3522,12 +3792,14 @@ function renderSummaryWB(month, t){
       <div class="kpi"><div class="lbl">ДРР, % (сред.)</div><div class="val">${t.avgDrr===null?'—':fmt(t.avgDrr*100)+'%'}</div></div>
       <div class="kpi"><div class="lbl">В т.ч. реклама, ₽</div><div class="val">${fmt(t.adsMemo)}</div></div>
       <div class="kpi"><div class="lbl">Себестоимость проданного</div><div class="val">${fmt(t.cogs)}</div></div>
+      <div class="kpi"><div class="lbl">Расходы внутри ВБ</div><div class="val">${fmt(Math.abs(t.commission)+t.logistics+t.fines+t.extraPayments+t.storage+t.paidAcceptance+t.otherExpenses)}</div></div>
       <div class="kpi"><div class="lbl">Расходы вне ВБ</div><div class="val">${fmt(t.externalTotal)}</div></div>
     </div>
 
     ${currentSectionProducts().length? `<h3 class="subhead">Выкуплено по товарам</h3><div class="kpi-grid">${productRows}</div>` : ''}
 
     <h3 class="subhead">Расходы внутри ВБ за месяц</h3>
+    ${renderExpenseThermometer(t, 'wb')}
     <div class="kpi-grid">
       <div class="kpi"><div class="lbl">Выкуплено (после СПП и комиссии)</div><div class="val">${fmt(t.boughtNetRub)}</div></div>
       <div class="kpi"><div class="lbl">Комиссия WB (авто)</div><div class="val">${fmt(Math.abs(t.commission))}</div></div>
@@ -3547,8 +3819,8 @@ function renderSummaryWB(month, t){
 function renderSummaryYM(month, t){
   const body = document.getElementById('summaryBody');
 
-  if(month.days.length===0){
-    body.innerHTML = '<div class="empty-state">Заполните хотя бы один день, чтобы увидеть итоги.</div>';
+  if(month.days.length===0 && (state.products||[]).length===0){
+    body.innerHTML = '<div class="empty-state">Добавьте товары и заполните хотя бы один день, чтобы увидеть итоги.</div>';
     return;
   }
 
@@ -3567,7 +3839,7 @@ function renderSummaryYM(month, t){
   body.innerHTML = `
     <h3 class="subhead">Каскад P&amp;L</h3>
     <div class="waterfall">
-      ${wfStep('Продажа, ₽', t.salesRub)}
+      ${wfStep('Продажа, ₽', t.salesRub, '')}
       ${wfStep('Доход на р/с', t.netToAccount, t.netToAccount>=0?'good':'bad')}
       ${wfStep('Маржа', t.margin, t.margin>=0?'good':'bad')}
       ${wfStep('Налог', t.tax, 'tax')}
@@ -3576,9 +3848,6 @@ function renderSummaryYM(month, t){
       ${wfStep('Чистая прибыль', t.netProfit, 'final')}
     </div>
 
-    <h3 class="subhead">Продано по товарам за месяц</h3>
-    <div class="kpi-grid">${productRows}</div>
-
     <h3 class="subhead">Ключевые метрики</h3>
     <div class="kpi-grid">
       <div class="kpi"><div class="lbl">Заказано до скидки, ₽</div><div class="val">${fmt(t.orderedRub)}</div></div>
@@ -3586,10 +3855,14 @@ function renderSummaryYM(month, t){
       <div class="kpi"><div class="lbl">ДРР, % (сред.)</div><div class="val">${t.avgDrr===null?'—':fmt(t.avgDrr*100)+'%'}</div></div>
       <div class="kpi"><div class="lbl">Реклама, ₽</div><div class="val">${fmt(t.adSpend)}</div></div>
       <div class="kpi"><div class="lbl">Себестоимость проданного</div><div class="val">${fmt(t.cogs)}</div></div>
+      <div class="kpi"><div class="lbl">Расходы внутри ЯМ</div><div class="val">${fmt(Math.abs(t.commission)+t.logistics+t.fines+t.extraPayments+t.storage+t.paidAcceptance+t.otherExpenses+t.adSpend)}</div></div>
       <div class="kpi"><div class="lbl">Расходы вне ЯМ</div><div class="val">${fmt(t.externalTotal)}</div></div>
     </div>
 
+    ${currentSectionProducts().length? `<h3 class="subhead">Продажи по товарам</h3><div class="kpi-grid">${productRows}</div>` : ''}
+
     <h3 class="subhead">Расходы внутри ЯМ за месяц</h3>
+    ${renderExpenseThermometer(t, 'ym')}
     <div class="kpi-grid">
       <div class="kpi"><div class="lbl">Комиссия ЯМ</div><div class="val">${fmt(Math.abs(t.commission))}</div></div>
       <div class="kpi"><div class="lbl">Логистика</div><div class="val">${fmt(t.logistics)}</div></div>
@@ -3629,7 +3902,7 @@ function renderSummarySite(month, t){
   body.innerHTML = `
     <h3 class="subhead">Каскад P&amp;L</h3>
     <div class="waterfall">
-      ${wfStep('Продажа, ₽', t.salesRub)}
+      ${wfStep('Продажа, ₽', t.salesRub, '')}
       ${wfStep('Доход на р/с', t.netToAccount, t.netToAccount>=0?'good':'bad')}
       ${wfStep('Маржа', t.margin, t.margin>=0?'good':'bad')}
       ${wfStep('Налог', t.tax, 'tax')}
@@ -3659,6 +3932,78 @@ function fmt(v){
 }
 function wfStepPct(lbl, val, cls=''){
   return `<div class="wf-step ${cls}"><div class="lbl">${lbl}</div><div class="val">${val===null?'—':fmt(val*100)+'%'}</div></div>`;
+}
+
+// "Термометр" расходов внутри площадки — на что уходят проценты от продажи, наглядно.
+// Раскладывает расходы на 4 крупные статьи (Комиссия/вознаграждение, Реклама, Логистика,
+// Прочее — туда суммируется всё, что не попало в первые три), каждая статья — это доля
+// от ПРОДАЖИ (не от суммы расходов), поэтому полоса заполнена не на всю ширину — остаток
+// справа визуально показывает, сколько от продажи остаётся ПОСЛЕ этих расходов.
+function renderExpenseThermometer(t, type){
+  if(!t.salesRub) return ''; // нет продаж в этом месяце — нечего показывать
+  let buckets;
+  if(type==='ozon'){
+    buckets = [
+      {label:'Вознаграждение', value:t.reward, color:'var(--et-c1)'},
+      {label:'Реклама', value:t.adSpend, color:'var(--et-c2)'},
+      {label:'Логистика', value:t.logistics, color:'var(--et-c3)'},
+      {label:'Прочие расходы', value:t.fines+t.storage+t.otherExpenses+t.extraPayments, color:'var(--et-c4)'},
+    ];
+  } else if(type==='wb'){
+    buckets = [
+      {label:'Комиссия WB', value:Math.abs(t.commission), color:'var(--et-c1)'},
+      {label:'В т.ч. реклама', value:t.adsMemo, color:'var(--et-c2)'},
+      {label:'Логистика', value:t.logistics, color:'var(--et-c3)'},
+      {label:'Прочие расходы', value:t.fines+t.storage+t.paidAcceptance+t.extraPayments+Math.max(0,t.otherExpenses-t.adsMemo), color:'var(--et-c4)'},
+    ];
+  } else if(type==='ym'){
+    buckets = [
+      {label:'Комиссия ЯМ', value:Math.abs(t.commission), color:'var(--et-c1)'},
+      {label:'Реклама', value:t.adSpend, color:'var(--et-c2)'},
+      {label:'Логистика', value:t.logistics, color:'var(--et-c3)'},
+      {label:'Прочие расходы', value:t.fines+t.storage+t.paidAcceptance+t.extraPayments+t.otherExpenses, color:'var(--et-c4)'},
+    ];
+  } else {
+    return '';
+  }
+  // Показываем только те статьи, где в ЭТОМ месяце реально есть расход — если в другом
+  // месяце появится (или пропадёт) какая-то статья, легенда сама подстроится, т.к. buckets
+  // считается заново на каждый рендер из данных именно текущего выбранного месяца.
+  const visible = buckets.filter(b=>b.value>0.004); // с небольшим запасом от погрешности плавающей точки
+  if(visible.length===0) return '';
+  const totalExpense = visible.reduce((sum,b)=>sum+b.value,0);
+  const totalPctOfSales = totalExpense/t.salesRub*100;
+  const footnoteId = 'etFootnote_'+type;
+
+  // Полоса закрашена ПОЛНОСТЬЮ — ширина сегмента здесь считается от суммы расходов (не от
+  // продажи), чтобы вся полоса была занята статьями. Проценты в легенде и в нижней строке
+  // при этом по-прежнему показывают долю ОТ ПРОДАЖИ (это отдельная, более полезная цифра).
+  const segmentsHtml = visible.map(b=>{
+    const widthPct = b.value/totalExpense*100;
+    const salesPct = b.value/t.salesRub*100;
+    return `<div class="et-seg" style="width:${widthPct}%;background:${b.color}" onmouseenter="updateThermoFootnote('${footnoteId}','${escapeHtml(b.label)}',${b.value},${salesPct})"></div>`;
+  }).join('');
+  const legendHtml = visible.map(b=>{
+    const salesPct = b.value/t.salesRub*100;
+    return `<div class="et-legend-row" onmouseenter="updateThermoFootnote('${footnoteId}','${escapeHtml(b.label)}',${b.value},${salesPct})"><span class="et-dot" style="background:${b.color}"></span><span class="et-legend-label">${escapeHtml(b.label)}</span><span class="et-legend-val">${fmt(salesPct)}%</span></div>`;
+  }).join('');
+  // По умолчанию (до наведения) нижняя строка показывает самую крупную статью.
+  const biggest = visible.reduce((a,b)=> (!a||b.value>a.value) ? b : a, null);
+  const biggestPct = biggest.value/t.salesRub*100;
+  return `
+  <div class="expense-thermometer">
+    <div class="et-total"><span class="et-total-label">Расходы площадки, %</span><span class="et-total-val">${fmt(totalPctOfSales)}%</span></div>
+    <div class="et-bar">${segmentsHtml}</div>
+    <div class="et-legend">${legendHtml}</div>
+    <div class="et-footnote" id="${footnoteId}"><b>${escapeHtml(biggest.label)}:</b> ${fmt(biggest.value)} ₽ · ${fmt(biggestPct)}% от продаж</div>
+  </div>`;
+}
+
+// Наводя курсор на сегмент полосы или строку легенды — обновляем нижнюю строку этой
+// конкретной статьёй (интерактивная подсказка, без выхода за пределы простого HTML/CSS).
+function updateThermoFootnote(footnoteId, label, value, pct){
+  const el = document.getElementById(footnoteId);
+  if(el) el.innerHTML = `<b>${escapeHtml(label)}:</b> ${fmt(value)} ₽ · ${fmt(pct)}% от продаж`;
 }
 
 function fmtQty(v){
