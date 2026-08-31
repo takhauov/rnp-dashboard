@@ -821,6 +821,10 @@ async function loadRootAsync(){
 }
 
 function migrateSectionData(data, sectionType){
+  // В старых документах товары жили только в shared:products, поэтому собственного
+  // массива products у раздела могло не быть вовсе. Создаём его до миграции каталога.
+  if(!Array.isArray(data.products)) data.products = [];
+  if(!data.months || typeof data.months!=='object') data.months = {};
   if(!data.customTypeMap) data.customTypeMap = {};
   if(!data.taxRateHistory || !data.taxRateHistory.length){
     let rate = 7;
@@ -1041,7 +1045,10 @@ async function refreshSectionData(id){
   migrateSectionData(data, getSectionConfig(sectionId).type);
   rootState.sections[sectionId] = data;
   if(sectionId===rootState.activeSectionId) state = data;
-  await loadDdsImportMap();
+  // Сбой чтения общего справочника ДДС не должен отменять уже успешно загруженный
+  // раздел и блокировать перерисовку его таблицы/P&L при переключении магазина.
+  try{ await loadDdsImportMap(); }
+  catch(e){ console.warn('Не удалось обновить справочник ДДС вместе с разделом:', e); }
 }
 
 let isRefreshing = false;
@@ -1110,11 +1117,27 @@ async function toggleDds(){
 async function switchSection(id){
   if(rootState.sections[id] && id!==rootState.activeSectionId){
     rootState.activeSectionId = id;
+    // Сразу переключаем рабочую ссылку на локально загруженные данные нового магазина.
+    // Раньше state менялся только после сетевого refreshSectionData(), поэтому при медленном
+    // или неудачном чтении P&L оставался от предыдущего магазина до ручного перехода по вкладкам.
+    state = rootState.sections[id];
     selectedMonthKey = null;      // у нового раздела свои месяцы — пересчитаем дефолт (текущий месяц)
     pendingImportRows = null; pendingUnknownTypes = [];
     try{ localStorage.setItem(LAST_SECTION_KEY, id); }catch(e){}
-    showView('section'); // сразу показываем раздел (со старыми данными), чтобы не было пустого экрана
-    await refreshSectionData(id); // и тут же подтягиваем актуальные данные из базы
+    showView('section');
+    // Мгновенно пересчитываем видимый раздел по уже загруженному состоянию.
+    populateMonthSelectors();
+    renderTaxBox();
+    renderDaily(); renderSummary();
+    try{
+      await refreshSectionData(id); // затем подтягиваем актуальную версию из базы
+    }catch(e){
+      console.error('Не удалось обновить раздел при переключении:', id, e);
+      showFbError('Не удалось обновить данные выбранного магазина. Показана последняя загруженная версия; попробуйте кнопку «Обновить».');
+    }
+    // За время ожидания пользователь мог уже выбрать другой магазин — устаревший
+    // обработчик не должен перерисовывать экран поверх более нового выбора.
+    if(rootState.activeSectionId!==id) return;
     populateMonthSelectors();
     renderTaxBox();
     renderDaily(); renderSummary();
@@ -3151,12 +3174,12 @@ function renderDaily(){
     `заполнено дней: ${filledCount} из ${month.days.length}`;
 
   const wrap = document.getElementById('dailyTableWrap');
-  if(currentSectionProducts().length===0){
-    wrap.innerHTML = (state.products||[]).length===0
-      ? '<div class="empty-state">Сначала добавьте товары на странице «Товары» — тогда появятся строки продаж по товарам.</div>'
-      : '<div class="empty-state">Для этого раздела нет ни одного товара с заполненным артикулом (или галочкой «Сайт»). Откройте «Товары» и укажите артикул/отметьте галочку для нужных товаров.</div>';
-    return;
-  }
+  // Отсутствие товаров не означает отсутствие месяца. Финансовые строки дня хранятся
+  // отдельно и должны оставаться видимыми: прежний ранний return скрывал всю заполненную
+  // таблицу, хотя данные месяца продолжали быть на месте (это видно по filledCount).
+  const productsWarning = currentSectionProducts().length===0
+    ? '<div class="empty-state" style="margin-bottom:12px;">Данные месяца сохранены. В каталоге этого магазина пока нет товаров — добавьте их на странице «Товары», чтобы появились строки продаж по товарам и расчёт себестоимости.</div>'
+    : '';
 
   const days = month.days;
   const calcs = days.map(calcDay);
@@ -3223,7 +3246,7 @@ function renderDaily(){
     body += `</tr>`;
   });
 
-  wrap.innerHTML = `<table class="daily">${head}<tbody>${body}</tbody></table>`;
+  wrap.innerHTML = `${productsWarning}<table class="daily">${head}<tbody>${body}</tbody></table>`;
 }
 
 /* ======================= SUMMARY ======================= */
@@ -3694,7 +3717,7 @@ async function migrateProductsFromLegacySharedCatalog(){
   for(const cfg of SECTIONS_CONFIG){
     const sid = cfg.id;
     const data = rootState.sections[sid];
-    if(!data || (rootState.loadFailed && rootState.loadFailed.has(sid)) || data.productsMigratedFromShared) continue;
+    if(!data || (rootState.loadFailed && rootState.loadFailed.has(sid))) continue;
     const toAdd = [];
     legacy.forEach(p=>{
       if(!legacySharedProductHasSection(p, sid)) return;
@@ -3705,8 +3728,15 @@ async function migrateProductsFromLegacySharedCatalog(){
         costHistory: legacySharedProductCostFor(p, sid)
       });
     });
+    // В первой версии миграции флаг мог сохраниться даже при пустом результате переноса.
+    // Если раздел уже отмечен, но товаров в нём нет, а в старом каталоге для него есть
+    // позиции, один раз восстанавливаем их. Непустые уже мигрированные разделы не трогаем.
+    const needsRepair = !!data.productsMigratedFromShared &&
+      (data.products||[]).length===0 && toAdd.length>0;
+    if(data.productsMigratedFromShared && !needsRepair) continue;
     const applyChange = (sectionData)=>{
-      if(sectionData.productsMigratedFromShared) return; // кто-то уже перенёс параллельно — не дублируем
+      if(sectionData.productsMigratedFromShared && (sectionData.products||[]).length>0) return; // кто-то уже перенёс параллельно — не дублируем
+      if(!Array.isArray(sectionData.products)) sectionData.products = [];
       const existingIds = new Set((sectionData.products||[]).map(x=>x.id));
       toAdd.forEach(m=>{ if(!existingIds.has(m.id)) sectionData.products.push(m); });
       sectionData.productsMigratedFromShared = true;
