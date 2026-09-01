@@ -230,9 +230,15 @@ input,select{font-family:var(--sans);}
 .ov-metric-btn{background:#fff;border:1px solid var(--line);border-radius:7px;padding:6px 12px;font-size:12.5px;color:var(--ink-dim);font-weight:600;}
 .ov-metric-btn:hover{border-color:var(--accent);color:var(--accent);}
 .ov-metric-btn.active{background:var(--navy);border-color:var(--navy);color:#fff;}
-.ov-chart-svg-wrap{margin-top:14px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;position:relative;}
+.ov-chart-svg-wrap{margin-top:14px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:0;position:relative;overflow:hidden;}
 .ov-svg{width:100%;height:260px;display:block;}
 .ov-svg text{font-family:var(--sans);}
+.ov-axis-label{position:absolute;font-size:10.5px;color:var(--ink-dim);font-family:var(--sans);pointer-events:none;white-space:nowrap;}
+.ov-axis-label-y{left:4px;transform:translateY(-50%);}
+.ov-axis-label-x{bottom:8px;}
+.ov-axis-label-x.ov-align-left{transform:translateX(0);}
+.ov-axis-label-x.ov-align-center{transform:translateX(-50%);}
+.ov-axis-label-x.ov-align-right{transform:translateX(-100%);}
 .ov-chart-tooltip{position:absolute;transform:translate(-50%,-115%);background:var(--navy);color:#fff;
   padding:7px 10px;border-radius:7px;font-size:11.5px;line-height:1.5;pointer-events:none;white-space:nowrap;
   box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:5;}
@@ -3916,6 +3922,7 @@ function renderOverviewTopKpis(agg, aggPrev){
   const rows = [
     {label:'Продажи', val: fmt(agg.salesRub)+' ₽', delta: pctChange(agg.salesRub, aggPrev.salesRub), unit:'%'},
     {label:'Заказано, шт', val: fmtQty(agg.orderedQty), delta: pctChange(agg.orderedQty, aggPrev.orderedQty), unit:'%'},
+    {label:'Операционная прибыль (EBITDA)', val: fmt(agg.ebitda)+' ₽', delta: pctChange(agg.ebitda, aggPrev.ebitda), unit:'%'},
     {label:'Чистая прибыль', val: fmt(agg.netProfit)+' ₽', delta: pctChange(agg.netProfit, aggPrev.netProfit), unit:'%'},
     {label:'Маржинальность', val: agg.marginality===null?'—':fmt(agg.marginality)+'%', delta: ppDelta(agg.marginality, aggPrev.marginality), unit:' п.п.'},
     {label:'ДРР', val: agg.avgDrr===null?'—':fmt(agg.avgDrr)+'%', delta: ppDelta(agg.avgDrr, aggPrev.avgDrr), unit:' п.п.'},
@@ -3941,9 +3948,13 @@ function renderOverviewTable(perShop){
     const drrFrac = s.t.avgDrr;
     const drrPct = (drrFrac===null||drrFrac===undefined) ? null : drrFrac*100;
     const drrCls = drrPct===null ? '' : (drrPct>20?'ov-cell-bad':(drrPct>=10?'ov-cell-warn':'ov-cell-good'));
+    // Операционная прибыль (EBITDA) красим по той же логике маржинальности — это прибыль
+    // ДО расходов вне площадки, поэтому убыток по чистой прибыли её не красит автоматически.
+    const ebitdaCls = marginality===null ? '' : marginCls;
     return `<tr>
       <td>${escapeHtml(s.label)}</td>
       <td>${fmt(s.t.salesRub)} ₽</td>
+      <td class="${ebitdaCls}">${fmt(s.t.ebitda)} ₽</td>
       <td class="${profitCls}">${fmt(s.t.netProfit)} ₽</td>
       <td class="${marginCls}">${marginality===null?'—':fmt(marginality*100)+'%'}</td>
       <td class="${expCls}">${s.expensePct===null?'—':fmt(s.expensePct)+'%'}</td>
@@ -3952,7 +3963,7 @@ function renderOverviewTable(perShop){
     </tr>`;
   }).join('');
   return `<table class="ov-table">
-    <thead><tr><th>Магазин</th><th>Продажи</th><th>Чистая прибыль</th><th>Маржинальность</th><th>Расходы площадки</th><th>ДРР</th><th>Заказано, шт</th></tr></thead>
+    <thead><tr><th>Магазин</th><th>Продажи</th><th>Операционная прибыль</th><th>Чистая прибыль</th><th>Маржинальность</th><th>Расходы площадки</th><th>ДРР</th><th>Заказано, шт</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>
   <div class="ov-legend"><span class="ov-legend-item"><span class="ov-dot ov-dot-good"></span>хороший результат</span><span class="ov-legend-item"><span class="ov-dot ov-dot-warn"></span>требует внимания</span><span class="ov-legend-item"><span class="ov-dot ov-dot-bad"></span>убыток / высокие расходы</span></div>`;
@@ -3983,11 +3994,12 @@ function buildOverviewChartHtml(seriesByShop){
     const color = seriesByShop[cfg.id].color;
     return `<label class="ov-shop-toggle ${on?'':'off'}"><input type="checkbox" ${on?'checked':''} onchange="toggleOverviewChartShop('${cfg.id}')"><span class="ov-shop-dot" style="background:${color}"></span>${escapeHtml(cfg.label)}</label>`;
   }).join('');
-  const svg = buildOverviewSvg(seriesByShop, metricCfg);
+  const chart = buildOverviewSvg(seriesByShop, metricCfg);
   return `
     <div class="ov-chart-metrics">${metricButtons}</div>
     <div class="ov-chart-svg-wrap">
-      ${svg}
+      ${chart.svg}
+      ${chart.labels}
       <div class="ov-chart-tooltip" id="ovChartTooltip" style="display:none;"></div>
     </div>
     <div class="ov-chart-shops-head">
@@ -4025,13 +4037,23 @@ function buildOverviewSvg(seriesByShop, metricCfg){
   const zeroY = yScale(0);
 
   if(activeSeries.length===0){
-    return `<div class="empty-state" style="padding:20px 0;">Отметьте хотя бы один магазин ниже, чтобы увидеть график.</div>`;
+    return {svg:`<div class="empty-state" style="padding:20px 0;">Отметьте хотя бы один магазин ниже, чтобы увидеть график.</div>`, labels:''};
   }
 
+  // Подписи — НЕ через SVG <text> (в некоторых браузерах SVG-текст рендерится без сглаживания
+  // и выглядит грубее, "печатной машинкой", даже с тем же font-family) — а обычными HTML-
+  // элементами поверх графика, позиционированными в процентах от размера графика (см. CSS
+  // .ov-axis-label) — тот же принцип, что и у всплывающей подсказки, шрифт при этом ровно
+  // такой же, как в остальном интерфейсе.
   const gridLines = [0,0.25,0.5,0.75,1].map(f=>{
     const v = minV + f*(maxV-minV);
     const y = yScale(v);
-    return `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="var(--line)" stroke-width="1"/><text x="4" y="${y+4}" font-size="10.5" fill="var(--ink-dim)">${fmtAxisNumber(v, metricCfg.unit)}</text>`;
+    return `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="var(--line)" stroke-width="1"/>`;
+  }).join('');
+  const yLabels = [0,0.25,0.5,0.75,1].map(f=>{
+    const v = minV + f*(maxV-minV);
+    const yPct = (yScale(v)/H*100).toFixed(2);
+    return `<div class="ov-axis-label ov-axis-label-y" style="top:${yPct}%;">${fmtAxisNumber(v, metricCfg.unit)}</div>`;
   }).join('');
 
   // Подписи дней по оси X — не каждый день (загромождает), берём ~5 равномерных отметок.
@@ -4044,11 +4066,11 @@ function buildOverviewSvg(seriesByShop, metricCfg){
   }
   const uniqueTicks = [...new Set(xTicks)];
   const xLabels = uniqueTicks.map((i,pos)=>{
-    const x = xScale(i);
-    // Крайние подписи центрируем НЕ ровно на краю графика (иначе текст вылезает за рамку
-    // и обрезается) — первая выравнивается по своему левому краю, последняя — по правому.
-    const anchor = pos===0 ? 'start' : (pos===uniqueTicks.length-1 ? 'end' : 'middle');
-    return `<text x="${x}" y="${H-8}" font-size="10.5" fill="var(--ink-dim)" text-anchor="${anchor}">${escapeHtml(fmtAxisDate(refDays[i].date))}</text>`;
+    const xPct = (xScale(i)/W*100).toFixed(2);
+    // Крайние подписи выравниваем НЕ по центру ровно на краю графика (иначе текст вылезает
+    // за рамку) — первая по своему левому краю, последняя по правому, остальные по центру.
+    const align = pos===0 ? 'left' : (pos===uniqueTicks.length-1 ? 'right' : 'center');
+    return `<div class="ov-axis-label ov-axis-label-x ov-align-${align}" style="left:${xPct}%;">${escapeHtml(fmtAxisDate(refDays[i].date))}</div>`;
   }).join('');
 
   const linesAndPoints = activeSeries.map(([id,s])=>{
@@ -4071,12 +4093,12 @@ function buildOverviewSvg(seriesByShop, metricCfg){
     return line+circles;
   }).join('');
 
-  return `<svg viewBox="0 0 ${W} ${H}" class="ov-svg" preserveAspectRatio="none">
+  const svg = `<svg viewBox="0 0 ${W} ${H}" class="ov-svg" preserveAspectRatio="none">
     ${gridLines}
     <line x1="${padL}" y1="${zeroY}" x2="${W-padR}" y2="${zeroY}" stroke="var(--ink-dim)" stroke-width="1" stroke-dasharray="3,3"/>
     ${linesAndPoints}
-    ${xLabels}
   </svg>`;
+  return {svg, labels: yLabels+xLabels};
 }
 
 // Наведение на точку — показывает всплывающую подсказку рядом (позиционируется в % от
