@@ -232,7 +232,7 @@ input,select{font-family:var(--sans);}
 .ov-metric-btn.active{background:var(--navy);border-color:var(--navy);color:#fff;}
 .ov-chart-svg-wrap{margin-top:14px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;position:relative;}
 .ov-svg{width:100%;height:260px;display:block;}
-.ov-svg text{font-family:var(--mono);}
+.ov-svg text{font-family:var(--sans);}
 .ov-chart-tooltip{position:absolute;transform:translate(-50%,-115%);background:var(--navy);color:#fff;
   padding:7px 10px;border-radius:7px;font-size:11.5px;line-height:1.5;pointer-events:none;white-space:nowrap;
   box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:5;}
@@ -245,7 +245,12 @@ input,select{font-family:var(--sans);}
 .ov-shop-toggle.off{color:var(--ink-dim);opacity:.55;}
 .ov-shop-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
 .ov-insights{margin:12px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px;}
-.ov-insights li{background:#f6f7fa;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:11px 14px;font-size:13px;color:var(--ink);}
+.ov-insights li{background:#f6f7fa;border:1px solid var(--line);border-left:3px solid var(--ink-dim);border-radius:8px;padding:11px 14px;font-size:13px;color:var(--ink);display:flex;flex-direction:column;gap:3px;}
+.ov-insights li b{font-size:13.5px;font-weight:650;color:var(--ink);}
+.ov-insights li span{color:var(--ink-dim);font-size:12.5px;}
+.ov-insights li.ov-insight-good{border-left-color:var(--good);}
+.ov-insights li.ov-insight-bad{border-left-color:var(--bad);}
+.ov-insights li.ov-insight-warn{border-left-color:var(--amber);}
 .missing-cost-backdrop{position:fixed;inset:0;background:rgba(20,24,35,0.55);display:flex;align-items:center;justify-content:center;z-index:500;padding:20px;}
 .missing-cost-modal{background:#fff;border-radius:12px;max-width:640px;width:100%;max-height:80vh;display:flex;flex-direction:column;padding:22px 24px;box-shadow:0 20px 50px rgba(0,0,0,0.25);}
 .missing-cost-modal h2{margin:0 0 8px;font-size:18px;}
@@ -3807,6 +3812,7 @@ function computeDailySeriesForSection(sectionId, monthKey){
       return {
         date: day.date,
         salesRub: c.salesRub,
+        orderedRub: num(day.orderedRub), // сырое поле дня — у "Сайта" его нет, там всегда 0 (это ожидаемо)
         netProfit: c.netProfit,
         marginality,
         expensePct,
@@ -3954,6 +3960,7 @@ function renderOverviewTable(perShop){
 
 const OVERVIEW_METRICS = [
   {id:'salesRub', label:'Продажи', unit:'₽'},
+  {id:'orderedRub', label:'Заказы', unit:'₽'},
   {id:'drr', label:'ДРР', unit:'%'},
 ];
 const OVERVIEW_SHOP_COLORS = ['#3b82f6','#7c3aed','#d97706','#1e8a6e','#e5646b','#0891b2','#a855f7','#65a30d','#c026d3','#475569'];
@@ -4053,11 +4060,12 @@ function buildOverviewSvg(seriesByShop, metricCfg){
     const ptsStr = coords.filter(Boolean).map(c=>`${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
     if(!ptsStr) return '';
     const line = `<polyline points="${ptsStr}" fill="none" stroke="${s.color}" stroke-width="2"/>`;
-    // Кружки на каждой точке — наведение показывает магазин/дату/значение во всплывающей
-    // подсказке рядом (см. showChartTooltip), не через нативный browser title.
+    // При 10 линиях сразу видимые кружки на каждой точке превращали график в кашу — теперь
+    // кружки прозрачные (только увеличенная зона наведения), сама точка не рисуется, но
+    // подсказка при наведении (магазин/дата/значение) по-прежнему работает.
     const circles = coords.filter(Boolean).map(c=>{
       const xPct = (c.x/W*100).toFixed(2), yPct = (c.y/H*100).toFixed(2);
-      return `<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="3.5" fill="#fff" stroke="${s.color}" stroke-width="2"
+      return `<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="7" fill="transparent" stroke="none"
         style="cursor:pointer;" onmouseenter="showChartTooltip(${xPct},${yPct},'${escapeHtml(s.label)}','${c.date}',${c.v},'${metricCfg.unit}')" onmouseleave="hideChartTooltip()"/>`;
     }).join('');
     return line+circles;
@@ -4107,6 +4115,8 @@ function setAllOverviewChartShops(on){
 // цифр (не заготовленные фразы), пороги (2 п.п., 3%, 25% доли прибыли и т.д.) — разумные
 // значения по умолчанию, можно попросить изменить.
 function generateOverviewInsights(perShop, agg, aggPrev){
+  // Каждый вывод — {title, desc, tone}: tone определяет цвет полоски слева
+  // (good — зелёный, bad — красный, warn — жёлтый), как в примере-макете.
   const insights = [];
 
   const profitable = perShop.filter(s=>s.t.netProfit>0);
@@ -4115,22 +4125,35 @@ function generateOverviewInsights(perShop, agg, aggPrev){
     const top = profitable.reduce((a,b)=> b.t.netProfit>a.t.netProfit?b:a, profitable[0]);
     const share = top.t.netProfit/totalPositiveProfit*100;
     if(share>=25){
-      insights.push(`«${top.label}» принёс ${fmt(share)}% суммарной прибыли (среди магазинов, которые сработали в плюс).`);
+      insights.push({title:`Лидер по прибыли — ${top.label}`, desc:`Принёс ${fmt(share)}% общей чистой прибыли (среди магазинов, которые сработали в плюс).`, tone:'good'});
+    }
+  }
+
+  // Лучшая рентабельность — магазин с наибольшей маржинальностью, в сравнении со средней
+  // по сети (только там, где вообще были продажи — иначе сравнение бессмысленно). Маржинальность
+  // считается ДО расходов вне площадки, поэтому дополнительно требуем реальную чистую прибыль —
+  // иначе магазин может одновременно попасть и сюда, и в список убыточных (высокая маржа внутри
+  // площадки не спасает, если съедают внешние расходы), что вводит в заблуждение.
+  const withMarginality = perShop.filter(s=>s.t.salesRub>0 && s.t.marginality!==null && s.t.marginality!==undefined && s.t.netProfit>0);
+  if(withMarginality.length>1 && agg.marginality!==null){
+    const best = withMarginality.reduce((a,b)=> (b.t.marginality>a.t.marginality?b:a), withMarginality[0]);
+    if(best.t.marginality*100 - agg.marginality >= 5){ // заметно выше среднего, не на пару процентов
+      insights.push({title:`Лучшая рентабельность — ${best.label}`, desc:`${fmt(best.t.marginality*100)}% против среднего значения ${fmt(agg.marginality)}%.`, tone:'good'});
     }
   }
 
   perShop.forEach(s=>{
     if(s.expensePct===null || s.expensePctPrev===null) return;
     const delta = s.expensePct - s.expensePctPrev;
-    if(delta>=2) insights.push(`У «${s.label}» расходы площадки выросли на ${fmt(delta)} п.п. по сравнению с прошлым месяцем.`);
-    else if(delta<=-2) insights.push(`У «${s.label}» расходы площадки снизились на ${fmt(Math.abs(delta))} п.п. по сравнению с прошлым месяцем.`);
+    if(delta>=2) insights.push({title:`У «${s.label}» выросли расходы площадки`, desc:`На ${fmt(delta)} п.п. по сравнению с прошлым месяцем.`, tone:'bad'});
+    else if(delta<=-2) insights.push({title:`У «${s.label}» снизились расходы площадки`, desc:`На ${fmt(Math.abs(delta))} п.п. по сравнению с прошлым месяцем.`, tone:'good'});
   });
 
   const salesChange = pctChange(agg.salesRub, aggPrev.salesRub);
   const profitChange = pctChange(agg.netProfit, aggPrev.netProfit);
   if(salesChange!==null && profitChange!==null){
-    if(salesChange>3 && profitChange<-3) insights.push('Продажи выросли, но чистая прибыль снизилась — стоит проверить расходы и себестоимость.');
-    else if(salesChange<-3 && profitChange>3) insights.push('Продажи снизились, но чистая прибыль выросла — вероятно, помогла оптимизация расходов.');
+    if(salesChange>3 && profitChange<-3) insights.push({title:'Расходы растут быстрее прибыли', desc:'Продажи выросли, но чистая прибыль снизилась — стоит проверить расходы и себестоимость.', tone:'warn'});
+    else if(salesChange<-3 && profitChange>3) insights.push({title:'Прибыль выросла несмотря на падение продаж', desc:'Продажи снизились, но чистая прибыль выросла — вероятно, помогла оптимизация расходов.', tone:'good'});
   }
 
   if(profitChange!==null && profitChange<-3){
@@ -4141,14 +4164,14 @@ function generateOverviewInsights(perShop, agg, aggPrev){
     ].filter(c=>c.value>0);
     if(causes.length){
       const biggest = causes.reduce((a,b)=>b.value>a.value?b:a, causes[0]);
-      insights.push(`Основная причина снижения прибыли — ${biggest.label} (+${fmt(biggest.value)} ₽ к прошлому месяцу).`);
+      insights.push({title:'Основная причина снижения прибыли', desc:`${biggest.label} — плюс ${fmt(biggest.value)} ₽ к прошлому месяцу.`, tone:'bad'});
     }
   }
 
   const lossShops = perShop.filter(s=>s.t.netProfit<0);
   if(lossShops.length>0){
     const word = lossShops.length===1?'магазин работает':(lossShops.length<5?'магазина работают':'магазинов работают');
-    insights.push(`${lossShops.length} ${word} в убыток: ${lossShops.map(s=>s.label).join(', ')}.`);
+    insights.push({title:`${lossShops.length} ${word} в убыток`, desc:lossShops.map(s=>s.label).join(', ')+'.', tone:'bad'});
   }
 
   return insights;
@@ -4189,7 +4212,7 @@ function renderOverview(){
   const chartHtml = renderOverviewChartSection(overviewMonthKey);
   const insights = generateOverviewInsights(data.perShop, data.agg, data.aggPrev);
   const insightsHtml = insights.length
-    ? `<ul class="ov-insights">${insights.map(i=>`<li>${escapeHtml(i)}</li>`).join('')}</ul>`
+    ? `<ul class="ov-insights">${insights.map(i=>`<li class="ov-insight-${i.tone}"><b>${escapeHtml(i.title)}</b><span>${escapeHtml(i.desc)}</span></li>`).join('')}</ul>`
     : `<div class="empty-state" style="padding:14px 0;">Пока недостаточно данных для выводов.</div>`;
 
   body.innerHTML = `
