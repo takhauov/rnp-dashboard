@@ -230,9 +230,17 @@ input,select{font-family:var(--sans);}
 .ov-metric-btn{background:#fff;border:1px solid var(--line);border-radius:7px;padding:6px 12px;font-size:12.5px;color:var(--ink-dim);font-weight:600;}
 .ov-metric-btn:hover{border-color:var(--accent);color:var(--accent);}
 .ov-metric-btn.active{background:var(--navy);border-color:var(--navy);color:#fff;}
-.ov-chart-svg-wrap{margin-top:14px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;}
+.ov-chart-svg-wrap{margin-top:14px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;position:relative;}
 .ov-svg{width:100%;height:260px;display:block;}
-.ov-chart-shops{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;}
+.ov-svg text{font-family:var(--mono);}
+.ov-chart-tooltip{position:absolute;transform:translate(-50%,-115%);background:var(--navy);color:#fff;
+  padding:7px 10px;border-radius:7px;font-size:11.5px;line-height:1.5;pointer-events:none;white-space:nowrap;
+  box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:5;}
+.ov-chart-tooltip b{font-weight:650;}
+.ov-chart-shops-head{display:flex;gap:8px;margin-top:14px;}
+.ov-shops-action{background:#fff;border:1px solid var(--line);border-radius:7px;padding:5px 11px;font-size:11.5px;color:var(--ink-dim);font-weight:600;}
+.ov-shops-action:hover{border-color:var(--accent);color:var(--accent);}
+.ov-chart-shops{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;}
 .ov-shop-toggle{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink);cursor:pointer;font-weight:400;}
 .ov-shop-toggle.off{color:var(--ink-dim);opacity:.55;}
 .ov-shop-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
@@ -630,16 +638,22 @@ h3.subhead{font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:
     <p class="desc">Как устроен дашборд и что означают показатели. Одинакова для всех разделов. Обновляется вместе с изменением логики.</p>
 
     <h3 class="subhead">Разделы</h3>
-    <p class="desc">Переключатель наверху («OZON SEKAI», «OZON MELD», «WB SEKAI», «ЯМ SEKAI», «ЯМ MELD», «Сайт») — это полностью независимые наборы данных: свои товары, свои дни, своя ставка налога.</p>
+    <p class="desc">Переключатель наверху — 9 торговых площадок (OZON SEKAI, OZON MELD, OZON OOO MELD, WB SEKAI, WB MELD, WB OOO MELD, ЯМ SEKAI, ЯМ MELD, ЯМ OOO MELD) плюс «Сайт» — это полностью независимые наборы данных: свои товары, свои дни, своя ставка налога. «OOO MELD» — тот же бренд MELD, но другое юрлицо/кабинет, поэтому ведётся отдельным разделом, как и любая другая площадка.</p>
+
+    <h3 class="subhead">Сводка</h3>
+    <p class="desc">Кнопка «Сводка» в шапке, перед площадками — общий взгляд сразу на все 10 разделов за один месяц: верхние показатели по всей сети (с изменением к прошлому месяцу), таблица сравнения магазинов с цветовой подсветкой (зелёный — хороший результат, жёлтый — требует внимания, красный — убыток или высокие расходы), график динамики по дням с переключением метрики и площадок, и блок «Ключевые выводы» — короткие текстовые подсказки, которые дашборд формирует сам из реальных цифр месяца (кто принёс больше прибыли, у кого выросли расходы площадки, есть ли убыточные магазины и т.п.).</p>
 
     <h3 class="subhead">Товары и себестоимость</h3>
-    <p class="desc">У каждой площадки (Ozon SEKAI, Ozon MELD, WB SEKAI, WB MELD, ЯМ SEKAI, ЯМ MELD, Сайт) свой отдельный список товаров — они не связаны между собой. Если один и тот же физический товар продаётся на нескольких площадках, его нужно завести на каждой отдельно (дашборд не пытается угадать, что это один и тот же товар — слишком легко ошибиться при автосопоставлении). Себестоимость проданного считается по количеству (сколько продано товара в этот день, по каждому артикулу) и датированной себестоимости товара. Себестоимость можно скорректировать с указанием даты — все дни ДО этой даты считаются по старой себестоимости, все дни ОТ неё и позже — по новой, таблица и итоги пересчитываются автоматически, уже введённые данные при этом не теряются.</p>
+    <p class="desc">У каждой площадки свой отдельный список товаров — они не связаны между собой. Если один и тот же физический товар продаётся на нескольких площадках, его нужно завести на каждой отдельно (дашборд не пытается угадать, что это один и тот же товар — слишком легко ошибиться при автосопоставлении). Себестоимость проданного считается по количеству (сколько продано товара в этот день, по каждому артикулу) и датированной себестоимости товара. Себестоимость можно скорректировать с указанием даты — все дни ДО этой даты считаются по старой себестоимости, все дни ОТ неё и позже — по новой, таблица и итоги пересчитываются автоматически, уже введённые данные при этом не теряются. Любую отдельную запись в истории себестоимости можно потом изменить (кнопка «✎») или удалить (кнопка «×»).</p>
+
+    <h3 class="subhead">Самовыкупы</h3>
+    <p class="desc">Кнопка «Самовыкупы» рядом с «Товары» — выбираете площадку, дату, сумму затрат, количество и товар из списка этой площадки; себестоимость самовыкупов считается сама (количество × себестоимость товара на эту дату). Запись добавляется к сумме и себестоимости самовыкупов выбранного дня — к тем же полям, что видны во вкладке «Ежедневные данные» (группа «Самовыкупы»), можно вносить несколько раз за один день для разных товаров, суммы копятся, а не перезаписываются. У «Сайта» самовыкупов нет. Если ошиблись при сохранении данных по самовыкупам – править вручную в таблице Ежедневные данные.</p>
 
     <h3 class="subhead">Ставка налога</h3>
     <p class="desc">Задаётся на вкладке «Ежедневные данные», действует так же, как себестоимость — с даты сохранения.</p>
 
     <h3 class="subhead">Ежедневные данные</h3>
-    <p class="desc">Таблица заполняется по дням — при выборе месяца дни создаются автоматически. Tab/Shift+Tab внутри таблицы переходит на соседнюю строку того же дня (вниз/вверх), а не на соседний день. Если в ячейке было «0» — при клике оно сразу очищается, а если ничего не ввести и уйти с поля — вернётся обратно к «0».</p>
+    <p class="desc">Таблица заполняется по дням — при выборе месяца дни создаются автоматически, а текущий календарный месяц дашборд заводит сам при первом заходе в раздел (без ручного клика «Добавить месяц»). Tab/Shift+Tab внутри таблицы переходит на соседнюю строку того же дня (вниз/вверх), а не на соседний день. Если в ячейке было «0» — при клике оно сразу очищается, а если ничего не ввести и уйти с поля — вернётся обратно к «0».</p>
 
     <h3 class="subhead">Импорт (Ozon)</h3>
     <p class="desc">На вкладке «Ежедневные данные» — загрузка отчёта Ozon «Начисления» (.xlsx).<br>Путь к файлу: Финансы → Экономика магазина → Отчёт по начислениям, период 1 день.<br>Продажа, Вознаграждение, Логистика, Хранение, Прочее и Реклама разносятся по дням автоматически, товары сопоставляются по SKU (указывается в карточке товара). Если Ozon переименует или добавит новый тип начисления — дашборд остановит импорт, спросит, в какое поле его отнести, и запомнит выбор.<br>Если в файле встретится SKU, которого ещё нет в каталоге товаров этого раздела (новый товар на площадке, или старый, который ещё не заводили вручную), — дашборд сам добавит для него строку товара, сопоставит SKU и покажет во вкладке «Товары» подсказку «заполните себестоимость». Количество по этому товару уже учитывается в импорте, только цена закупки остаётся пустой до заполнения.</p>
@@ -654,9 +668,11 @@ h3.subhead{font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:
       Берутся только строки-расходы с заполненным направлением и без пометки «Переносим в РНП? — нет»
       (строки с выручкой, закупкой товара и налогом УСН исключены — они уже учитываются другими
       механизмами дашборда). Статья расхода определяет поле («ФОТ», «Внешняя логистика» и т.д.),
-      направление — раздел (вб/озон/ям/сайт → конкретный WB/Ozon/ЯМ SEKAI или MELD, сайт).<br>
-      Если статья или направление ещё не встречались — дашборд один раз спросит, куда их отнести, и
-      запомнит выбор навсегда (сопоставления общие на весь дашборд, не по разделам). Из встроенных
+      столбец «Направление расходов/доходов» определяет раздел, в который эта строка попадёт.<br>
+      Если статья или направление ещё не встречались — дашборд один раз спросит, куда их отнести
+      (полный список всех площадок, включая новые — как только заведён новый раздел, он сразу
+      появляется в этом выборе), и запомнит выбор навсегда (сопоставления общие на весь дашборд, не по
+      разделам) — при следующем файле с тем же направлением спрашивать уже не будет. Из встроенных
       допущений: «Кредиты» (тело кредита) относится к «Прочие», «социальные налоги» — к «Налоги с ФОТ»
       — если это не так, поправить можно вручную (значение всё равно попадёт в раздел как конфликт с
       уже введённым, если там что-то было, либо примените и потом скорректируйте нужный день руками).<br>
@@ -665,7 +681,7 @@ h3.subhead{font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:
       старое или заменить суммой из файла.</p>
 
     <h3 class="subhead">Показатели в «Итоги / P&amp;L»</h3>
-    <p class="desc">Продажа → Доход на р/с (за вычетом расходов внутри площадки) → Маржа (минус себестоимость и самовыкупы) → Операционная прибыль, EBITDA (минус налог) → Чистая прибыль (минус расходы за пределами площадки: фулфилмент, ФОТ, аренда и т.п.).</p>
+    <p class="desc">Продажа → Доход на р/с (за вычетом расходов внутри площадки) → Маржа (минус себестоимость и самовыкупы) → Операционная прибыль, EBITDA (минус налог) → Чистая прибыль (минус расходы за пределами площадки: фулфилмент, ФОТ, аренда и т.п.). ДРР считается от суммы заказанного, а не от суммы продаж.</p>
 
     <h3 class="subhead">Архив за прошлые периоды</h3>
     <p class="desc">Данные до перехода на этот дашборд — в Google-таблицах, по разделам:</p>
@@ -3838,9 +3854,13 @@ function buildOverviewData(monthKey){
     const t = computeMonthTotalsForSection(cfg.id, monthKey);
     const tPrev = computeMonthTotalsForSection(cfg.id, prevKey);
     const expenseRub = platformExpenseRub(t, cfg.type);
-    const expensePct = (expenseRub!==null && t.salesRub) ? expenseRub/t.salesRub*100 : null;
+    // Порог в 1000 ₽ продаж — если продаж почти не было (копейки), деление на них раздувает
+    // % расходов до абсурдных величин (тысячи процентов) даже от небольшой суммы расходов —
+    // и делает бессмысленной саму цифру и особенно разницу между месяцами. В таких месяцах
+    // просто не считаем % (показываем "—"), а не искажённое число.
+    const expensePct = (expenseRub!==null && t.salesRub>=1000) ? expenseRub/t.salesRub*100 : null;
     const expenseRubPrev = platformExpenseRub(tPrev, cfg.type);
-    const expensePctPrev = (expenseRubPrev!==null && tPrev.salesRub) ? expenseRubPrev/tPrev.salesRub*100 : null;
+    const expensePctPrev = (expenseRubPrev!==null && tPrev.salesRub>=1000) ? expenseRubPrev/tPrev.salesRub*100 : null;
     return {id:cfg.id, label:cfg.label, type:cfg.type, t, tPrev, expenseRub, expensePct, expenseRubPrev, expensePctPrev};
   });
 
@@ -3892,7 +3912,6 @@ function renderOverviewTopKpis(agg, aggPrev){
     {label:'Заказано, шт', val: fmtQty(agg.orderedQty), delta: pctChange(agg.orderedQty, aggPrev.orderedQty), unit:'%'},
     {label:'Чистая прибыль', val: fmt(agg.netProfit)+' ₽', delta: pctChange(agg.netProfit, aggPrev.netProfit), unit:'%'},
     {label:'Маржинальность', val: agg.marginality===null?'—':fmt(agg.marginality)+'%', delta: ppDelta(agg.marginality, aggPrev.marginality), unit:' п.п.'},
-    {label:'Расходы площадок, %', val: agg.platformExpensePct===null?'—':fmt(agg.platformExpensePct)+'%', delta: ppDelta(agg.platformExpensePct, aggPrev.platformExpensePct), unit:' п.п.'},
     {label:'ДРР', val: agg.avgDrr===null?'—':fmt(agg.avgDrr)+'%', delta: ppDelta(agg.avgDrr, aggPrev.avgDrr), unit:' п.п.'},
     {label:'Себестоимость проданного', val: fmt(agg.cogs)+' ₽', delta: pctChange(agg.cogs, aggPrev.cogs), unit:'%'},
   ];
@@ -3935,9 +3954,6 @@ function renderOverviewTable(perShop){
 
 const OVERVIEW_METRICS = [
   {id:'salesRub', label:'Продажи', unit:'₽'},
-  {id:'netProfit', label:'Чистая прибыль', unit:'₽'},
-  {id:'marginality', label:'Маржинальность', unit:'%'},
-  {id:'expensePct', label:'Расходы площадки', unit:'%'},
   {id:'drr', label:'ДРР', unit:'%'},
 ];
 const OVERVIEW_SHOP_COLORS = ['#3b82f6','#7c3aed','#d97706','#1e8a6e','#e5646b','#0891b2','#a855f7','#65a30d','#c026d3','#475569'];
@@ -3963,17 +3979,33 @@ function buildOverviewChartHtml(seriesByShop){
   const svg = buildOverviewSvg(seriesByShop, metricCfg);
   return `
     <div class="ov-chart-metrics">${metricButtons}</div>
-    <div class="ov-chart-svg-wrap">${svg}</div>
+    <div class="ov-chart-svg-wrap">
+      ${svg}
+      <div class="ov-chart-tooltip" id="ovChartTooltip" style="display:none;"></div>
+    </div>
+    <div class="ov-chart-shops-head">
+      <button class="ov-shops-action" onclick="setAllOverviewChartShops(true)">Выделить все</button>
+      <button class="ov-shops-action" onclick="setAllOverviewChartShops(false)">Отменить все</button>
+    </div>
     <div class="ov-chart-shops">${shopToggles}</div>`;
 }
 
-function fmtCompact(v){
-  if(Math.abs(v)>=1000) return Math.round(v/1000)+'k';
-  return fmt(v);
+// Числа по оси — целиком, тысячами через пробел (как везде в дашборде), без сокращений
+// вроде "156k". Для рублёвых метрик достаточно крупных значений округляем до целых.
+function fmtAxisNumber(v, unit){
+  if(unit==='%') return fmt(v)+'%';
+  return Math.round(v).toLocaleString('ru-RU', {maximumFractionDigits:0});
+}
+// Подпись дня по оси X — как "1 авг", "12 авг" (коротко, без года — график всегда в
+// рамках одного месяца).
+const OV_MONTHS_SHORT = ['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
+function fmtAxisDate(dateStr){
+  const [y,m,d] = dateStr.split('-');
+  return parseInt(d,10)+' '+OV_MONTHS_SHORT[parseInt(m,10)-1];
 }
 
 function buildOverviewSvg(seriesByShop, metricCfg){
-  const W = 900, H = 260, padL = 46, padR = 12, padT = 14, padB = 24;
+  const W = 900, H = 260, padL = 54, padR = 12, padT = 14, padB = 30;
   const activeSeries = Object.entries(seriesByShop).filter(([id])=>overviewChartShops.has(id));
   const allPoints = [];
   activeSeries.forEach(([id, s])=>{ s.data.forEach(d=>{ const v = d[metricCfg.id]; if(v!==null && v!==undefined) allPoints.push(v); }); });
@@ -3985,30 +4017,74 @@ function buildOverviewSvg(seriesByShop, metricCfg){
   const yScale = v => padT + (1-((v-minV)/(maxV-minV)))*(H-padT-padB);
   const zeroY = yScale(0);
 
-  const gridLines = [0,0.25,0.5,0.75,1].map(f=>{
-    const v = minV + f*(maxV-minV);
-    const y = yScale(v);
-    return `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="var(--line)" stroke-width="1"/><text x="2" y="${y+4}" font-size="10" fill="var(--ink-dim)">${fmtCompact(v)}</text>`;
-  }).join('');
-
-  const linesHtml = activeSeries.map(([id,s])=>{
-    const pts = s.data.map((d,i)=>{
-      const v = d[metricCfg.id];
-      if(v===null||v===undefined) return null;
-      return `${xScale(i).toFixed(1)},${yScale(v).toFixed(1)}`;
-    }).filter(Boolean).join(' ');
-    if(!pts) return '';
-    return `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2"/>`;
-  }).join('');
-
   if(activeSeries.length===0){
     return `<div class="empty-state" style="padding:20px 0;">Отметьте хотя бы один магазин ниже, чтобы увидеть график.</div>`;
   }
+
+  const gridLines = [0,0.25,0.5,0.75,1].map(f=>{
+    const v = minV + f*(maxV-minV);
+    const y = yScale(v);
+    return `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="var(--line)" stroke-width="1"/><text x="4" y="${y+4}" font-size="10.5" fill="var(--ink-dim)">${fmtAxisNumber(v, metricCfg.unit)}</text>`;
+  }).join('');
+
+  // Подписи дней по оси X — не каждый день (загромождает), берём ~5 равномерных отметок.
+  const refDays = activeSeries[0][1].data;
+  const xTickCount = Math.min(6, dayCount);
+  const xTicks = [];
+  for(let k=0;k<xTickCount;k++){
+    const i = Math.round(k*(dayCount-1)/(xTickCount-1||1));
+    xTicks.push(i);
+  }
+  const uniqueTicks = [...new Set(xTicks)];
+  const xLabels = uniqueTicks.map((i,pos)=>{
+    const x = xScale(i);
+    // Крайние подписи центрируем НЕ ровно на краю графика (иначе текст вылезает за рамку
+    // и обрезается) — первая выравнивается по своему левому краю, последняя — по правому.
+    const anchor = pos===0 ? 'start' : (pos===uniqueTicks.length-1 ? 'end' : 'middle');
+    return `<text x="${x}" y="${H-8}" font-size="10.5" fill="var(--ink-dim)" text-anchor="${anchor}">${escapeHtml(fmtAxisDate(refDays[i].date))}</text>`;
+  }).join('');
+
+  const linesAndPoints = activeSeries.map(([id,s])=>{
+    const coords = s.data.map((d,i)=>{
+      const v = d[metricCfg.id];
+      if(v===null||v===undefined) return null;
+      return {x:xScale(i), y:yScale(v), v, date:d.date};
+    });
+    const ptsStr = coords.filter(Boolean).map(c=>`${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
+    if(!ptsStr) return '';
+    const line = `<polyline points="${ptsStr}" fill="none" stroke="${s.color}" stroke-width="2"/>`;
+    // Кружки на каждой точке — наведение показывает магазин/дату/значение во всплывающей
+    // подсказке рядом (см. showChartTooltip), не через нативный browser title.
+    const circles = coords.filter(Boolean).map(c=>{
+      const xPct = (c.x/W*100).toFixed(2), yPct = (c.y/H*100).toFixed(2);
+      return `<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="3.5" fill="#fff" stroke="${s.color}" stroke-width="2"
+        style="cursor:pointer;" onmouseenter="showChartTooltip(${xPct},${yPct},'${escapeHtml(s.label)}','${c.date}',${c.v},'${metricCfg.unit}')" onmouseleave="hideChartTooltip()"/>`;
+    }).join('');
+    return line+circles;
+  }).join('');
+
   return `<svg viewBox="0 0 ${W} ${H}" class="ov-svg" preserveAspectRatio="none">
     ${gridLines}
     <line x1="${padL}" y1="${zeroY}" x2="${W-padR}" y2="${zeroY}" stroke="var(--ink-dim)" stroke-width="1" stroke-dasharray="3,3"/>
-    ${linesHtml}
+    ${linesAndPoints}
+    ${xLabels}
   </svg>`;
+}
+
+// Наведение на точку — показывает всплывающую подсказку рядом (позиционируется в % от
+// размера графика, поэтому корректно работает при любой ширине контейнера).
+function showChartTooltip(xPct, yPct, label, dateStr, value, unit){
+  const tip = document.getElementById('ovChartTooltip');
+  if(!tip) return;
+  tip.style.left = xPct+'%';
+  tip.style.top = yPct+'%';
+  tip.style.display = 'block';
+  const valStr = unit==='%' ? fmt(value)+'%' : fmt(value)+' ₽';
+  tip.innerHTML = `<b>${escapeHtml(label)}</b><br>${escapeHtml(fmtAxisDate(dateStr))}: ${valStr}`;
+}
+function hideChartTooltip(){
+  const tip = document.getElementById('ovChartTooltip');
+  if(tip) tip.style.display = 'none';
 }
 
 function setOverviewChartMetric(metricId){
@@ -4018,6 +4094,11 @@ function setOverviewChartMetric(metricId){
 }
 function toggleOverviewChartShop(id){
   if(overviewChartShops.has(id)) overviewChartShops.delete(id); else overviewChartShops.add(id);
+  const wrap = document.getElementById('ovChartWrap');
+  if(wrap) wrap.innerHTML = buildOverviewChartHtml(window.__overviewSeriesByShop);
+}
+function setAllOverviewChartShops(on){
+  overviewChartShops = on ? new Set(SECTIONS_CONFIG.map(c=>c.id)) : new Set();
   const wrap = document.getElementById('ovChartWrap');
   if(wrap) wrap.innerHTML = buildOverviewChartHtml(window.__overviewSeriesByShop);
 }
@@ -4118,7 +4199,7 @@ function renderOverview(){
     ${tableHtml}
     <h3 class="subhead" style="margin-top:24px;">Динамика по дням</h3>
     ${chartHtml}
-    <h3 class="subhead" style="margin-top:24px;">Автоматические выводы</h3>
+    <h3 class="subhead" style="margin-top:24px;">Ключевые выводы</h3>
     ${insightsHtml}
   `;
 }
