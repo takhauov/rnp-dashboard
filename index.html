@@ -189,6 +189,11 @@ nav#tabs button[data-nav="help"]{--ic:url("data:image/svg+xml,%3Csvg%20xmlns%3D%
 body.side-collapsed{--side-w:68px;}
 body.side-collapsed .side{padding:18px 10px;}
 body.side-collapsed .header-bar{display:none;} /* в свёрнутом меню логотип не показываем */
+/* «Перейти в Воронку» — над «Свернуть меню»; значок «две стрелки» */
+.side-switch{text-decoration:none;}
+.side-switch + .side-toggle{margin-top:0;}
+.side-switch::before{-webkit-mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27black%27%20stroke-width%3D%271.8%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M4%208h14l-4-4M20%2016H6l4%204%27%2F%3E%3C%2Fsvg%3E") center/18px 18px no-repeat !important;mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27black%27%20stroke-width%3D%271.8%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M4%208h14l-4-4M20%2016H6l4%204%27%2F%3E%3C%2Fsvg%3E") center/18px 18px no-repeat !important;}
+body.side-collapsed .side-switch::before{transform:none !important;}
 body.side-collapsed nav#tabs button,
 body.side-collapsed .side-toggle{font-size:0;gap:0;justify-content:center;padding:9px 0;}
 body.side-collapsed nav#tabs button.section-btn{padding:7px 0;}
@@ -723,6 +728,7 @@ a.ov-shop-link:hover{text-decoration:underline;}
     <button class="nav-btn" data-nav="dds" id="ddsToggleBtn" onclick="toggleDds()">Расходы вне МП</button>
     <button class="nav-btn" data-nav="help" id="helpToggleBtn" onclick="toggleHelp()">Справка</button>
   </nav>
+  <a id="switchDashLink" class="side-toggle side-switch" style="display:none;" title="Перейти в Воронку">Перейти в Воронку</a>
   <button type="button" id="sideToggle" class="side-toggle">Свернуть меню</button>
   <div id="userBar" style="display:none;">
     <span id="userEmailLabel"></span>
@@ -972,6 +978,13 @@ a.ov-shop-link:hover{text-decoration:underline;}
    false — window.storage (для быстрых тестов прямо в Claude.ai)
    Перед заливкой на GitHub Pages поставь true. */
 const USE_FIREBASE = true;
+/* Сервер данных (Timeweb), тот же, что у «Воронки». Пусто — дашборд работает с Firebase, как раньше.
+   Когда переедем: адрес сервера, например 'https://data.example.ru' — тогда данные и вход идут через него. */
+const SERVER_URL = 'https://voronka.5-42-109-231.sslip.io';
+const USE_SERVER = !!SERVER_URL;
+/* Адрес «Воронки» для кнопки «Перейти в Воронку» в меню. Пусто — кнопки нет.
+   Работает «в одном окне» и без повторного входа, если оба дашборда открываются с одного сайта. */
+const VORONKA_URL = 'https://takhauov.github.io/Voronka-prodazh-SEKAI-MELD/';
 /* ================================================================ */
 
 const FIREBASE_CONFIG = {
@@ -986,6 +999,20 @@ const FIREBASE_CONFIG = {
 // Тот же Firebase-проект, что и у «Воронки продаж» — логины сотрудников общие.
 // Коллекция своя, чтобы данные разных дашбордов не пересекались в одной базе.
 const FIRESTORE_COLLECTION = 'app_data_rnp_dashboard';
+
+/* ---- сервер данных: вход хранится в браузере сотрудника (токен), каждый запрос — с ним.
+   Ключ тот же, что у «Воронки»: оба дашборда на одном сайте GitHub Pages, поэтому вход общий. ---- */
+const SRV_TOKEN_KEY = 'voronka_srv_token';
+function srvToken(){ try{ return localStorage.getItem(SRV_TOKEN_KEY)||''; }catch(e){ return ''; } }
+function srvSetToken(t){ try{ if(t) localStorage.setItem(SRV_TOKEN_KEY,t); else localStorage.removeItem(SRV_TOKEN_KEY); }catch(e){} }
+async function srvCall(path, body){
+  const t = srvToken();
+  const r = await fetch(SERVER_URL+path, {method:'POST', headers:{'Content-Type':'application/json', ...(t?{Authorization:'Bearer '+t}:{})}, body:JSON.stringify(body||{})});
+  let j = null; try{ j = await r.json(); }catch(e){}
+  if(r.status===401 && path.startsWith('/api/store')){ srvSetToken(''); showFbError('Вход истёк — обновите страницу и войдите снова. Несохранённые правки сохраните после входа.'); }
+  if(!r.ok){ const e = new Error((j&&j.error)||('сервер ответил '+r.status)); e.status = r.status; throw e; }
+  return j;
+}
 
 let fbReadyPromise = null;
 function showFbError(msg){
@@ -1014,6 +1041,17 @@ function initFirebase(){
 }
 
 async function storeGet(key){
+  if(USE_SERVER){
+    let lastErr = null;
+    for(let attempt=0; attempt<3; attempt++){
+      try{ const r = await srvCall('/api/store/get', {coll:FIRESTORE_COLLECTION, key}); return r.exists ? JSON.parse(r.v) : null; }
+      catch(e){ lastErr = e; console.error('storage get failed (попытка '+(attempt+1)+' из 3)', key, e); if(e.status===401||e.status===403) break; if(attempt<2) await new Promise(res=>setTimeout(res, 600*(attempt+1))); }
+    }
+    // как и с Firebase: сбой чтения — это НЕ «документа нет», иначе можно сохранить пустой раздел поверх данных
+    const err = new Error('Не удалось прочитать "'+key+'" после нескольких попыток: '+(lastErr && lastErr.message));
+    err.isStoreReadFailure = true;
+    throw err;
+  }
   if(!USE_FIREBASE){
     try{ const r = await window.storage.get(key, false); return r ? JSON.parse(r.value) : null; }
     catch(e){ return null; }
@@ -1040,6 +1078,14 @@ async function storeGet(key){
   throw err;
 }
 async function storeSet(key, val){
+  if(USE_SERVER){
+    for(let attempt=0; attempt<3; attempt++){
+      try{ await srvCall('/api/store/set', {coll:FIRESTORE_COLLECTION, key, v:JSON.stringify(val)}); return true; }
+      catch(e){ console.error('storage set failed', key, e); if(e.status===401||e.status===403) return false; }
+      if(attempt<2) await new Promise(res=>setTimeout(res, 600*(attempt+1)));
+    }
+    return false;
+  }
   if(!USE_FIREBASE){
     for(let attempt=0; attempt<3; attempt++){
       try{ const r = await window.storage.set(key, JSON.stringify(val), false); if(r) return true; }
@@ -1299,6 +1345,29 @@ function save(sectionId){
    месяца в по-настоящему пустом разделе при самом первом запуске дашборда (там гонке
    взяться неоткуда — конкурировать не с чем, раздела ещё не существует ни у кого). */
 async function transactionalUpdate(key, makeDefault, migrateFn, mutatorFn){
+  if(USE_SERVER){
+    // Сервер: прочитать документ вместе с номером версии → применить правку к свежим данным →
+    // записать «только если версия не изменилась». Если кто-то успел записать раньше (ответ 409) —
+    // повторяем на новой версии; так же, как транзакция Firestore, ничего не затирается.
+    let fails = 0;
+    for(let attempt=0; attempt<8 && fails<3; attempt++){
+      try{
+        const r = await srvCall('/api/store/get', {coll:FIRESTORE_COLLECTION, key});
+        const fresh = r.exists ? JSON.parse(r.v) : makeDefault();
+        if(migrateFn) migrateFn(fresh);
+        mutatorFn(fresh);
+        await srvCall('/api/store/set', {coll:FIRESTORE_COLLECTION, key, v:JSON.stringify(fresh), expectVer:r.ver});
+        return fresh;
+      }catch(e){
+        if(e.status===409) continue; // документ изменился между чтением и записью — повторяем на свежей версии
+        fails++; console.error('transactionalUpdate не удалось (попытка '+(attempt+1)+')', key, e);
+        if(e.status===401||e.status===403) break;
+        await new Promise(res=>setTimeout(res, 600*fails));
+      }
+    }
+    console.error('transactionalUpdate: все попытки провалились', key);
+    return null;
+  }
   if(!USE_FIREBASE){
     // Тестовый режим: нет Firestore-транзакций, но всё равно читаем свежее значение
     // непосредственно перед записью — так тестовый прогон ведёт себя максимально похоже
@@ -4359,7 +4428,32 @@ function showApp(){
   document.getElementById('mainApp').style.display = 'block';
 }
 
-if(USE_FIREBASE){
+if(USE_SERVER){
+  // Вход через сервер данных: почта + пароль (пароль задаёт руководитель в «Воронке» → Настройки → Сотрудники).
+  const $ = id=>document.getElementById(id);
+  const enter = async user=>{ $('userEmailLabel').textContent = user.email; $('userBar').style.display = 'flex'; showApp(); await startApp(); };
+  showLogin();
+  if(srvToken()){
+    srvCall('/api/me').then(r=>enter(r.user)).catch(e=>{ if(e.status===401) srvSetToken(''); else $('loginError').textContent = 'Сервер данных недоступен: '+e.message; });
+  }
+  $('loginBtn').addEventListener('click', async ()=>{
+    const email = $('login_email').value.trim(), password = $('login_password').value, errEl = $('loginError');
+    errEl.textContent = '';
+    if(!email || !password){ errEl.textContent = 'Введите email и пароль.'; return; }
+    const btn = $('loginBtn'); btn.disabled = true; btn.textContent = 'Вхожу…';
+    try{
+      const r = await srvCall('/api/login', {email, password});
+      srvSetToken(r.token); $('login_password').value = '';
+      await enter(r.user);
+    }catch(e){ errEl.textContent = e.status ? e.message : ('Сервер данных недоступен: '+e.message); }
+    btn.disabled = false; btn.textContent = 'Войти';
+  });
+  $('login_password').addEventListener('keydown', e=>{ if(e.key==='Enter') $('loginBtn').click(); });
+  $('logoutBtn').addEventListener('click', async ()=>{
+    try{ await srvCall('/api/logout'); }catch(e){}
+    srvSetToken(''); location.reload();
+  });
+} else if(USE_FIREBASE){
   try{
     if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
     showLogin();
@@ -4971,6 +5065,7 @@ async function exportToExcel(){
     btn.title=btn.textContent=collapsed?'Развернуть меню':'Свернуть меню'; };
   document.querySelectorAll('#tabs > button').forEach(b=>{ b.title=b.textContent.trim(); }); // подсказки в свёрнутом
   document.getElementById('logoutBtn').title='Выйти';
+  if(VORONKA_URL){ const l=document.getElementById('switchDashLink'); l.href=VORONKA_URL; l.style.display='flex'; }
   apply();
   btn.addEventListener('click',()=>{ collapsed=!collapsed; apply(); try{ localStorage.setItem(KEY,collapsed?'1':'0'); }catch(e){} });
 })();
