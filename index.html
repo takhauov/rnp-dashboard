@@ -415,6 +415,8 @@ input.pc-name-input:focus{border-color:var(--blue);outline:none;background:var(-
 .month-bar .spacer{flex:1;}
 
 /* ---------- transposed table ---------- */
+.fscroll{position:fixed;bottom:0;height:14px;overflow-x:auto;overflow-y:hidden;z-index:35;background:var(--card);border-top:1px solid var(--line);display:none;}
+.fscroll>div{height:1px;}
 .table-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:12px;max-height:72vh;overflow-y:auto;}
 table.daily{border-collapse:collapse;width:100%;font-size:12px;}
 table.daily th, table.daily td{
@@ -518,6 +520,12 @@ table.analysis-tbl td.pct{font-weight:600;}
 .empty-state{
   text-align:center;padding:40px 20px;color:var(--tx2);font-size:13px;
 }
+.sum-fold>summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:8px;margin:22px 0 10px;user-select:none;}
+.sum-fold>summary::-webkit-details-marker{display:none;}
+.sum-fold>summary h3.subhead{margin:0;}
+.sum-fold>summary::before{content:"";width:7px;height:7px;border-right:2px solid var(--tx2);border-bottom:2px solid var(--tx2);transform:rotate(-45deg);transition:transform .15s;}
+.sum-fold[open]>summary::before{transform:rotate(45deg);}
+.sum-fold>summary:hover h3.subhead{color:var(--tx);}
 h3.subhead{font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--tx2);margin:22px 0 10px;font-weight:650;}
 #helpPanel h3.subhead{color:var(--section-tx);}
 
@@ -616,6 +624,14 @@ a.ov-shop-link:hover{text-decoration:underline;}
 @media(max-width:1280px){.hm-three{grid-template-columns:1fr 1fr;} .hm-three>.hm-inscard{grid-column:1 / -1;}}
 .hm-top .hm-top-r{margin-left:auto;display:flex;gap:10px;align-items:center;}
 .hm-top .hm-top-r select{margin-left:0;}
+/* точки загрузки по API — как на Главной Воронки */
+.hm-srcs{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.hm-src{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:5px 10px;border-radius:20px;background:var(--card);border:1px solid var(--line);color:var(--tx);cursor:pointer;}
+.hm-src:hover{border-color:var(--line2);}
+.hm-src::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--amber);box-shadow:0 0 8px var(--amber);}
+.hm-src.ok::before{background:var(--green);box-shadow:0 0 8px var(--green);}
+.hm-src.err::before{background:var(--red);box-shadow:0 0 8px var(--red);}
+.amb{color:var(--amber);}
 
 /* ===== Помощник «Спросить» ===== */
 .ask-scrim{position:fixed;inset:0;background:var(--scrim);z-index:90;display:none;}
@@ -683,6 +699,40 @@ a.ov-shop-link:hover{text-decoration:underline;}
 .ask-chart{margin:10px 0 6px;}
 .ask-dash{display:inline-block;width:14px;height:0;border-top:2px dashed;}
 .ask-dash.dot{border-top-style:dotted;}
+/* ===== Телефон: режим просмотра. На экранах шире 820px эти правила не работают ===== */
+.mob-menu-btn{display:none;width:42px;height:42px;flex:none;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--tx);place-items:center;cursor:pointer;}
+.mob-menu-btn svg{width:20px;height:20px;}
+.mob-scrim{display:none;position:fixed;inset:0;background:var(--scrim);z-index:99;}
+@media(max-width:820px){
+  body{overflow-x:hidden;}
+  .mob-menu-btn{display:grid;}
+  .side{width:264px;z-index:100;transform:translateX(-105%);transition:transform .2s;}
+  body.mob-menu-open .side{transform:none;}
+  body.mob-menu-open .mob-scrim{display:block;}
+  #sideToggle{display:none;}
+  .main{margin-left:0;padding:12px 12px 32px;}
+  .main-top{flex-wrap:wrap;margin-bottom:12px;}
+  .main-top .tabs{order:5;width:100%;}
+  .main-top .tab-btn{flex:1;padding:6px 8px;}
+  .panel{padding:14px 12px;}
+  .hm-top{gap:10px;margin:0 0 12px;}
+  .hm-top h1{font-size:19px;}
+  .hm-top .hm-top-r{margin-left:0;width:100%;flex-wrap:wrap;}
+  .hm-top .hm-srcs{width:100%;}
+  .hm-top .hm-top-r select,.hm-top .hm-top-r #exportBtn{flex:1;min-width:0;}
+  .hm-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+  .hm-three,.hm-two,.hm-grid{grid-template-columns:minmax(0,1fr);}
+  .hm-three>.hm-inscard{grid-column:auto;}
+  .ov-table th:first-child,.ov-table td:first-child{position:sticky;left:0;z-index:1;background:var(--card);}
+  .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+  .table-scroll{max-height:82vh;}
+  table.daily td.metric-label,table.daily th.metric-col{min-width:118px;max-width:128px;white-space:normal;}
+  .fscroll{display:none !important;}
+  .ask-panel{width:100%;max-width:100%;}
+  .ask-panel:not(.open){visibility:hidden;}
+  .missing-cost-backdrop{padding:10px;}
+  .missing-cost-modal{padding:16px 14px;}
+}
 </style>
 </head>
 <body>
@@ -705,6 +755,14 @@ a.ov-shop-link:hover{text-decoration:underline;}
 
 <div id="mainApp" style="display:none;">
 
+<div id="syncDetailsBackdrop" class="missing-cost-backdrop" style="display:none;" onclick="if(event.target===this)closeSyncDetails()">
+  <div class="missing-cost-modal">
+    <h2 id="syncDetailsTitle"></h2>
+    <div class="desc" id="syncDetailsDesc"></div>
+    <div id="syncDetailsList" class="missing-cost-list"></div>
+    <div class="missing-cost-footer"><button class="btn secondary" onclick="closeSyncDetails()">Закрыть</button></div>
+  </div>
+</div>
 <div id="missingCostBackdrop" class="missing-cost-backdrop" style="display:none;">
   <div class="missing-cost-modal">
     <h2>Не заполнена себестоимость (<span id="missingCostCount">0</span>)</h2>
@@ -716,6 +774,7 @@ a.ov-shop-link:hover{text-decoration:underline;}
   </div>
 </div>
 
+<div class="mob-scrim" onclick="toggleMobMenu(false)"></div>
 <aside class="side">
   <div class="header-bar"><div><h1>РНП · Дашборд ежедневного учёта</h1></div></div>
   <nav id="tabs">
@@ -741,6 +800,7 @@ a.ov-shop-link:hover{text-decoration:underline;}
 <div id="fbStatusBanner" style="display:none;background:var(--neg-bg);color:var(--bad);padding:10px 16px;font-size:13px;border:1px solid var(--neg-line);border-radius:12px;margin-bottom:16px;"></div>
 
 <div class="main-top">
+  <button type="button" class="mob-menu-btn" onclick="toggleMobMenu()" aria-label="Меню" title="Меню"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
   <div class="tabs" id="tabsBar">
     <button class="tab-btn active" data-tab="daily">Ежедневные данные</button>
     <button class="tab-btn" data-tab="summary">Итоги / P&amp;L</button>
@@ -887,6 +947,7 @@ a.ov-shop-link:hover{text-decoration:underline;}
   <div class="hm-top">
     <div><h1>Сводка по всем магазинам</h1><div class="sub" id="overviewSub"></div></div>
     <div class="hm-top-r">
+      <div class="hm-srcs" id="ovSources"></div>
       <button type="button" class="btn secondary" id="exportBtn" onclick="exportToExcel()" title="Все данные дашборда одним файлом .xlsx — для анализа в Claude или Excel">⤓ Выгрузить в Excel</button>
       <select id="overviewMonthSelect" onchange="switchOverviewMonth(this.value)"></select>
     </div>
@@ -985,6 +1046,8 @@ const USE_SERVER = !!SERVER_URL;
 /* Адрес «Воронки» для кнопки «Перейти в Воронку» в меню. Пусто — кнопки нет.
    Работает «в одном окне» и без повторного входа, если оба дашборда открываются с одного сайта. */
 const VORONKA_URL = 'https://takhauov.github.io/Voronka-prodazh-SEKAI-MELD/';
+/* «Выйти» — на стартовую страницу (вход общий для Воронки и РНП), как в Воронке. Пусто — остаёмся на экране входа. */
+const START_URL = 'https://takhauov.github.io/';
 /* ================================================================ */
 
 const FIREBASE_CONFIG = {
@@ -1895,17 +1958,18 @@ function renderProducts(){
     const hist = (p.costHistory||[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
     const currentEntry = hist.filter(h=>h.date<=today).slice(-1)[0] || hist[0];
     const hasCost = hist.length>0;
-    const isOpen = openProductEdit===p.id;
+    const fromOc = p.costSource==='ocifrovka';   // себестоимость приходит из Оцифровки (server/rnp_cost_sync.js), правится там
+    const isOpen = !fromOc && openProductEdit===p.id;
     // Хронологический порядок — от новой даты к старой, независимо от того, в каком порядке
     // корректировки вносились (даже если запись за более раннюю дату добавили позже остальных).
     // У каждой записи — свои кнопки "изменить" и "удалить", не только у списка в целом.
     const historyRows = hist.slice().reverse().map(h=>`
       <div class="pc-history-row">
         <span>с ${fmtDate(h.date)} — ${fmt(h.cost)} ₽</span>
-        <span class="pc-history-actions">
+        ${fromOc?'':`<span class="pc-history-actions">
           <button onclick="editCostEntry('${p.id}','${h.date}',${h.cost})" title="Изменить эту запись">✎</button>
           <button onclick="deleteCostEntry('${p.id}','${h.date}')" title="Удалить эту запись">×</button>
-        </span>
+        </span>`}
       </div>`).join('');
     // Если сейчас редактируем именно существующую запись (а не добавляем новую) — форма
     // предзаполняется её датой и суммой, а не сегодняшним днём и пустым полем.
@@ -1930,12 +1994,12 @@ function renderProducts(){
         <span class="${hasCost?'pc-cost-now':'pc-cost-since'}">${hasCost?fmt(currentEntry.cost)+' ₽':'себестоимость не задана'}</span>
         <span class="pc-cost-since">${currentEntry? 'себестоимость с '+fmtDate(currentEntry.date) : ''}</span>
       </div>
-      <button class="pc-toggle" onclick="toggleProductEdit('${p.id}')">${isOpen?'Отменить':(hasCost?'Скорректировать':'Задать себестоимость')}</button>
+      ${fromOc?'<div class="pc-cost-since" style="margin-top:2px;">из Оцифровки — меняется там: «Справочники → Себестоимость»</div>':`<button class="pc-toggle" onclick="toggleProductEdit('${p.id}')">${isOpen?'Отменить':(hasCost?'Скорректировать':'Задать себестоимость')}</button>
       <div class="pc-edit-form ${isOpen?'open':''}">
         <input type="date" id="costDate-${p.id}" value="${formDate}">
         <input type="number" id="costValue-${p.id}" step="0.01" placeholder="Новая себестоимость, ₽" value="${formCost}">
         <button class="save-btn" id="costSaveBtn-${p.id}" onclick="saveCost('${p.id}')">Сохранить</button>
-      </div>
+      </div>`}
       ${hist.length>0?`<div class="pc-history">${historyRows}</div>`:''}
     </div>`;
   }).join('');
@@ -4066,7 +4130,7 @@ function renderSummaryOzon(month, t){
       <div class="kpi"><div class="lbl">Расходы вне Ozon</div><div class="val">${fmt(t.externalTotal)}</div></div>
     </div>
 
-    ${currentSectionProducts().length? `<h3 class="subhead">Продажи по товарам</h3><div class="kpi-grid">${productRows}</div>` : ''}
+    ${currentSectionProducts().length? productsFold('Продажи по товарам', productRows) : ''}
 
     <h3 class="subhead">Расходы внутри Ozon за месяц</h3>
     <div class="kpi-grid">
@@ -4127,7 +4191,7 @@ function renderSummaryWB(month, t){
       <div class="kpi"><div class="lbl">Расходы вне ВБ</div><div class="val">${fmt(t.externalTotal)}</div></div>
     </div>
 
-    ${currentSectionProducts().length? `<h3 class="subhead">Выкуплено по товарам</h3><div class="kpi-grid">${productRows}</div>` : ''}
+    ${currentSectionProducts().length? productsFold('Выкуплено по товарам', productRows) : ''}
 
     <h3 class="subhead">Расходы внутри ВБ за месяц</h3>
     <div class="kpi-grid">
@@ -4189,7 +4253,7 @@ function renderSummaryYM(month, t){
       <div class="kpi"><div class="lbl">Расходы вне ЯМ</div><div class="val">${fmt(t.externalTotal)}</div></div>
     </div>
 
-    ${currentSectionProducts().length? `<h3 class="subhead">Продажи по товарам</h3><div class="kpi-grid">${productRows}</div>` : ''}
+    ${currentSectionProducts().length? productsFold('Продажи по товарам', productRows) : ''}
 
     <h3 class="subhead">Расходы внутри ЯМ за месяц</h3>
     <div class="kpi-grid">
@@ -4246,7 +4310,7 @@ function renderSummarySite(month, t){
       <div class="kpi"><div class="lbl">Расходы вне Сайта</div><div class="val">${fmt(t.externalTotal)}</div></div>
     </div>
 
-    ${currentSectionProducts().length? `<h3 class="subhead">Продажи по товарам</h3><div class="kpi-grid">${productRows}</div>` : ''}
+    ${currentSectionProducts().length? productsFold('Продажи по товарам', productRows) : ''}
 
     <h3 class="subhead">Расходы вне Сайта за месяц</h3>
     <div class="kpi-grid">${externalRows}</div>
@@ -4451,7 +4515,7 @@ if(USE_SERVER){
   $('login_password').addEventListener('keydown', e=>{ if(e.key==='Enter') $('loginBtn').click(); });
   $('logoutBtn').addEventListener('click', async ()=>{
     try{ await srvCall('/api/logout'); }catch(e){}
-    srvSetToken(''); location.reload();
+    srvSetToken(''); if(START_URL) location.href=START_URL; else location.reload();
   });
 } else if(USE_FIREBASE){
   try{
@@ -4581,10 +4645,82 @@ function ovPeriodLabel(key, n){
   return n<=1 ? `${n} ${m}` : `1–${n} ${m}`;
 }
 
+/* ---- Статус загрузки по API (как на Главной Воронки) — по журналу apisync:log:<площадка>, его пишут server/rnp_*_sync.js:
+   {at, finished, from, to, brands:{БРЕНД:{ok, error, days, changed, added, keyExpires}}}.
+   Зелёный — последняя загрузка без ошибок и не старше 36 часов; красный — ошибка, загрузка давно не приходила или ключ истекает
+   через 3 дня и раньше; жёлтый — журнала ещё нет. У ЯМ срока ключа в API нет. ---- */
+const SYNC_SOURCES=[{ch:'wb',label:'WB'},{ch:'ozon',label:'Ozon'},{ch:'ym',label:'Я.Маркет'}];
+const SYNC_TIME={ozon:'16:00', wb:'21:00', ym:'04:00'};   // ежедневный запуск загрузки (МСК)
+let ovSyncLogs={}, ovSyncAt=0;
+const keyDaysLeft=iso=>Math.round((Date.parse(iso.slice(0,10))-Date.parse(todayStr()))/864e5);   // сегодня — 0, завтра — 1
+const keyDateRu=iso=>fmtDate(iso.slice(0,10));
+function keyAlerts(log){
+  return Object.entries((log && log.brands)||{}).filter(([,x])=>x.keyExpires).map(([b,x])=>{
+    const days=keyDaysLeft(x.keyExpires), date=keyDateRu(x.keyExpires);
+    return {brand:b, date, days, text: days<0 ? `ключ API ${b} истёк ${date}` : `ключ API ${b} истекает ${date}${days===0?' (сегодня)':days===1?' (завтра)':` (через ${days} дн.)`}`};
+  }).filter(a=>a.days<=3);
+}
+const syncWhen=iso=>iso ? new Date(iso).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+function syncState(log){
+  if(!log) return null;
+  const errs=[];
+  Object.entries(log.brands||{}).forEach(([b,x])=>{ if(!x.ok) errs.push(`кабинет ${b}: ${x.error||'ошибка'}`); });
+  const keyErrs=keyAlerts(log).map(a=>a.text); errs.push(...keyErrs);
+  const stale=!log.finished || Date.now()-Date.parse(log.finished)>36*3600e3;
+  return {errs, stale, keyOnly: errs.length>0 && errs.length===keyErrs.length, ok:!errs.length && !stale};
+}
+const ovKeyAlerts=()=>SYNC_SOURCES.flatMap(s=>keyAlerts(ovSyncLogs[s.ch]).map(a=>({...a, ch:s.ch, label:s.label})));
+function renderOvSources(){
+  const el=document.getElementById('ovSources');
+  if(!el) return;
+  el.innerHTML=SYNC_SOURCES.map(s=>{
+    const log=ovSyncLogs[s.ch], k=syncState(log);
+    if(!k) return `<span class="hm-src" title="Загрузка по API ещё не приходила">${s.label}</span>`;
+    const when=syncWhen(log.finished||log.at);
+    const title = k.keyOnly && !k.stale ? `Загружено ${when}, но ${k.errs.join('; ')}` : k.errs.length ? `Ошибка загрузки по API (${when}): ${k.errs.join('; ')}` : k.stale ? `Загрузка по API давно не приходила — последняя ${when||'неизвестно когда'}` : `Подключено по API, обновлено ${when}`;
+    return `<span class="hm-src ${k.ok?'ok':'err'}" title="${escapeHtml(title)} — нажмите, чтобы посмотреть подробнее" onclick="openSyncDetails('${s.ch}')">${s.label}</span>`;
+  }).join('');
+}
+async function loadOvSources(){
+  ovSyncAt=Date.now();
+  try{
+    const logs=await Promise.all(SYNC_SOURCES.map(x=>storeGet('apisync:log:'+x.ch)));
+    const had=ovKeyAlerts().length;
+    ovSyncLogs={}; SYNC_SOURCES.forEach((x,i)=>{ if(logs[i]) ovSyncLogs[x.ch]=logs[i]; });
+    renderOvSources();
+    if(had!==ovKeyAlerts().length) renderOverview();   // появилось/ушло предупреждение о ключе в «Требуют внимания»
+  }catch(e){ console.error('Сводка: не удалось прочитать статус загрузки', e); }
+}
+function openSyncDetails(ch){
+  const log=ovSyncLogs[ch], k=syncState(log), lbl=(SYNC_SOURCES.find(s=>s.ch===ch)||{}).label||ch;
+  if(!log) return;
+  const keyTxt=x=>{ if(!x.keyExpires) return ''; const d=keyDaysLeft(x.keyExpires);
+    return `ключ API до <b class="${d<=3?'neg':d<=14?'amb':''}">${keyDateRu(x.keyExpires)}</b>`; };
+  document.getElementById('syncDetailsTitle').textContent=`Загрузка ${lbl} по API`;
+  document.getElementById('syncDetailsDesc').innerHTML=`${k.ok ? '<span class="pos">✓ Всё загружено</span>' : k.keyOnly && !k.stale ? '<span class="pos">✓ Всё загружено</span>, но <span class="neg">скоро истекает ключ API</span> — продлите его, иначе загрузка остановится' : k.errs.length ? '<span class="neg">Есть ошибки</span> — кабинет с ошибкой не обновился' : '<span class="neg">Загрузка давно не приходила</span>'}<br>
+    Последняя загрузка: <b>${syncWhen(log.finished||log.at)||'—'}</b>; дни ${log.from?fmtDate(log.from):'—'} – ${log.to?fmtDate(log.to):'—'}. Загрузка идёт каждый день в ${SYNC_TIME[ch]||'—'} по Москве.`;
+  document.getElementById('syncDetailsList').innerHTML=Object.entries(log.brands||{}).map(([b,x])=>`
+    <div class="missing-cost-row"><div class="missing-cost-info">
+      <span class="missing-cost-name">${escapeHtml(b)}</span>
+      <span class="missing-cost-platform">${x.ok ? `✓ дней: ${x.days||0}${x.added?`, новых товаров: ${x.added}`:''}` : `<span class="neg">ошибка: ${escapeHtml(x.error||'')}</span>`}</span>
+    </div><span class="missing-cost-platform">${keyTxt(x)}</span></div>`).join('');
+  document.getElementById('syncDetailsBackdrop').style.display='flex';
+}
+function closeSyncDetails(){ document.getElementById('syncDetailsBackdrop').style.display='none'; }
+function ovOpenKeyAlerts(){ const a=ovKeyAlerts()[0]; if(a) openSyncDetails(a.ch); }
+
+// Блок товаров в «Итоги / P&L»: по умолчанию свёрнут, открытый остаётся открытым до перезагрузки страницы
+let productsFoldOpen = false;
+function productsFold(label, rows){
+  return `<details class="sum-fold"${productsFoldOpen?' open':''} ontoggle="productsFoldOpen=this.open"><summary><h3 class="subhead">${label}</h3></summary><div class="kpi-grid">${rows}</div></details>`;
+}
+
 function renderOverview(){
   const body = document.getElementById('overviewBody');
   if(!body) return;
   ovSparkSeq = 0;
+  renderOvSources();
+  if(Date.now()-ovSyncAt>60000) loadOvSources();   // точки площадок — не чаще раза в минуту
   const data = buildOverviewData(overviewMonthKey);      // месяц целиком — для таблицы сравнения
   const h = buildHomeData(overviewMonthKey);              // одинаковый период — для сравнения с прошлым месяцем
   const {agg, aggPrev, daily} = h;
@@ -4620,7 +4756,9 @@ function renderOverview(){
   const highDrr = data.perShop.filter(s=>s.t.avgDrr!==null && s.t.avgDrr!==undefined && s.t.avgDrr*100>OV_DRR_LIMIT);
   const names = list => list.length ? `<small>${list.map(s=>escapeHtml(s.label)).join(', ')}</small>` : '';
   const att = (n, lbl, onclick, extra='')=>`<a class="hm-att" onclick="${onclick}"><span>${lbl}${extra}</span><b class="${n>0?'neg':'pos'}">${n}</b></a>`;
+  const keys = ovKeyAlerts();
   const attCard = `<div class="panel hm-card"><div class="hm-h">Требуют внимания</div>
+    ${keys.length ? att(keys.length, 'Ключи API истекают', 'ovOpenKeyAlerts()', `<small>${keys.map(k=>escapeHtml(k.label+' '+k.brand+': '+k.date)).join(', ')}</small>`) : ''}
     ${att(missing.length, 'Товары без себестоимости', 'renderMissingCostModal()')}
     ${att(loss.length, 'Магазины в убытке', 'ovScrollToTable()', names(loss))}
     ${att(highDrr.length, `Магазины с ДРР выше ${OV_DRR_LIMIT}%`, 'ovScrollToTable()', names(highDrr))}
@@ -5061,13 +5199,49 @@ async function exportToExcel(){
   let collapsed=false;
   try{ collapsed=localStorage.getItem(KEY)==='1'; }catch(e){}
   const btn=document.getElementById('sideToggle');
-  const apply=()=>{ document.body.classList.toggle('side-collapsed',collapsed);
+  const mobile=window.matchMedia('(max-width:820px)');   // на телефоне меню выдвижное, значков-«свёрнуто» нет
+  const apply=()=>{ document.body.classList.toggle('side-collapsed',collapsed && !mobile.matches);
     btn.title=btn.textContent=collapsed?'Развернуть меню':'Свернуть меню'; };
   document.querySelectorAll('#tabs > button').forEach(b=>{ b.title=b.textContent.trim(); }); // подсказки в свёрнутом
   document.getElementById('logoutBtn').title='Выйти';
   if(VORONKA_URL){ const l=document.getElementById('switchDashLink'); l.href=VORONKA_URL; l.style.display='flex'; }
   apply();
   btn.addEventListener('click',()=>{ collapsed=!collapsed; apply(); try{ localStorage.setItem(KEY,collapsed?'1':'0'); }catch(e){} });
+  mobile.addEventListener('change',()=>{ apply(); toggleMobMenu(false); });
+  document.querySelector('.side').addEventListener('click',e=>{ if(mobile.matches && e.target.closest('button,a')) toggleMobMenu(false); });   // выбрали пункт — меню закрывается
+})();
+function toggleMobMenu(open){ document.body.classList.toggle('mob-menu-open',open); }
+
+/* Полоса прокрутки внизу окна для широких таблиц, чей край ниже экрана (как в Воронке): своя полоса такой таблицы
+   видна только в самом низу. Прокрутка в обе стороны синхронна; таблица целиком на экране — полоса скрыта. */
+(function(){
+  const bar=document.createElement('div'); bar.className='fscroll'; bar.innerHTML='<div></div>'; document.body.appendChild(bar);
+  const inner=bar.firstChild; let cur=null, raf=0;
+  function pick(){
+    const H=window.innerHeight;
+    for(const el of document.querySelectorAll('.table-scroll')){
+      if(el.scrollWidth<=el.clientWidth+1 || !el.offsetParent) continue;
+      const r=el.getBoundingClientRect();
+      if(r.top<H-60 && r.bottom>H) return el;
+    }
+    return null;
+  }
+  function update(){
+    raf=0; const el=pick();
+    if(el!==cur){ if(cur) cur.removeEventListener('scroll',fromEl); cur=el; if(cur) cur.addEventListener('scroll',fromEl,{passive:true}); }
+    if(!cur){ bar.style.display='none'; return; }
+    const r=cur.getBoundingClientRect();
+    bar.style.display='block'; bar.style.left=r.left+'px'; bar.style.width=r.width+'px';
+    inner.style.width=cur.scrollWidth+'px';
+    fromEl();
+  }
+  // сравнение значений не даёт событиям зациклиться
+  function fromEl(){ if(cur && Math.abs(bar.scrollLeft-cur.scrollLeft)>1) bar.scrollLeft=cur.scrollLeft; }
+  bar.addEventListener('scroll',()=>{ if(cur && Math.abs(cur.scrollLeft-bar.scrollLeft)>1) cur.scrollLeft=bar.scrollLeft; },{passive:true});
+  const later=()=>{ if(!raf) raf=requestAnimationFrame(update); };
+  window.addEventListener('scroll',later,{passive:true}); window.addEventListener('resize',later);
+  new MutationObserver(later).observe(document.querySelector('.main')||document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']});
+  later();
 })();
 
 function currentTheme(){ return document.documentElement.dataset.theme==='light' ? 'light' : 'dark'; }
