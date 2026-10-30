@@ -755,6 +755,14 @@ a.ov-shop-link:hover{text-decoration:underline;}
 
 <div id="mainApp" style="display:none;">
 
+<div id="ddsMapBackdrop" class="missing-cost-backdrop" style="display:none;" onclick="if(event.target===this)closeDdsMapModal()">
+  <div class="missing-cost-modal">
+    <h2>Расходы ОДДС без сопоставления</h2>
+    <div class="desc">Укажите, куда относить каждое значение — запомним на будущее. Строки попадут в РНП при следующей ночной загрузке (03:10 МСК).</div>
+    <div id="ddsMapList" class="missing-cost-list"></div>
+    <div class="missing-cost-footer" style="gap:8px;"><button class="save-btn" onclick="saveDdsMapModal()">Сохранить</button><button class="btn secondary" onclick="closeDdsMapModal()">Закрыть</button></div>
+  </div>
+</div>
 <div id="syncDetailsBackdrop" class="missing-cost-backdrop" style="display:none;" onclick="if(event.target===this)closeSyncDetails()">
   <div class="missing-cost-modal">
     <h2 id="syncDetailsTitle"></h2>
@@ -4684,11 +4692,12 @@ function renderOvSources(){
 async function loadOvSources(){
   ovSyncAt=Date.now();
   try{
-    const logs=await Promise.all(SYNC_SOURCES.map(x=>storeGet('apisync:log:'+x.ch)));
-    const had=ovKeyAlerts().length;
+    const [ddsLog, ...logs]=await Promise.all(['dds',...SYNC_SOURCES.map(x=>x.ch)].map(ch=>storeGet('apisync:log:'+ch)));
+    const had=ovKeyAlerts().length+ovDdsUnknown().length;
     ovSyncLogs={}; SYNC_SOURCES.forEach((x,i)=>{ if(logs[i]) ovSyncLogs[x.ch]=logs[i]; });
+    ovDdsLog=ddsLog;
     renderOvSources();
-    if(had!==ovKeyAlerts().length) renderOverview();   // появилось/ушло предупреждение о ключе в «Требуют внимания»
+    if(had!==ovKeyAlerts().length+ovDdsUnknown().length) renderOverview();   // появилось/ушло предупреждение в «Требуют внимания»
   }catch(e){ console.error('Сводка: не удалось прочитать статус загрузки', e); }
 }
 function openSyncDetails(ch){
@@ -4713,6 +4722,39 @@ function ovOpenKeyAlerts(){ const a=ovKeyAlerts()[0]; if(a) openSyncDetails(a.ch
 let productsFoldOpen = false;
 function productsFold(label, rows){
   return `<details class="sum-fold"${productsFoldOpen?' open':''} ontoggle="productsFoldOpen=this.open"><summary><h3 class="subhead">${label}</h3></summary><div class="kpi-grid">${rows}</div></details>`;
+}
+
+/* Значения ОДДС без сопоставления: их пишет server/rnp_dds_sync.js в apisync:log:dds. Здесь выбирают поле и магазин — как при импорте файла;
+   выбор сохраняется в shared:dds_import_map, сами строки попадают в РНП при следующей ночной загрузке. */
+let ovDdsLog=null;
+const ovDdsUnknown=()=>((ovDdsLog && ovDdsLog.unknown)||[]).filter(u=>(u.kind==='статья' ? resolveDdsStatya(u.name) : resolveDdsDirection(u.name))===null);
+function openDdsMapModal(){
+  const list=ovDdsUnknown();
+  if(!list.length){ closeDdsMapModal(); return; }
+  document.getElementById('ddsMapList').innerHTML=list.map((u,i)=>{
+    const options=(u.kind==='статья' ? DDS_FIELD_OPTIONS : ddsSectionOptions()).map(([v,l])=>`<option value="${v}">${escapeHtml(l)}</option>`).join('');
+    return `<div class="missing-cost-row"><div class="missing-cost-info">
+      <span class="missing-cost-name">${escapeHtml(u.name)}</span>
+      <span class="missing-cost-platform">${u.kind==='статья'?'статья':'направление'} · строк ${u.n} · ${fmtQty(Math.round(u.sum))} ₽</span>
+    </div><select id="ddsMapSel-${i}"><option value="">Выберите…</option>${options}</select></div>`;
+  }).join('');
+  document.getElementById('ddsMapBackdrop').style.display='flex';
+}
+function closeDdsMapModal(){ document.getElementById('ddsMapBackdrop').style.display='none'; }
+async function saveDdsMapModal(){
+  const statya={}, direction={};
+  ovDdsUnknown().forEach((u,i)=>{
+    const v=(document.getElementById('ddsMapSel-'+i)||{}).value;
+    if(!v) return;
+    if(u.kind==='статья') statya[u.name]=v; else direction[u.name]=v;
+  });
+  if(!Object.keys(statya).length && !Object.keys(direction).length) return;
+  const applyChange=data=>{ Object.assign(data.statyaMap, statya); Object.assign(data.directionMap, direction); };
+  applyChange(ddsImportMap);   // мгновенно локально
+  await commitDdsImportMapChange(applyChange);   // и надёжно, не задевая правила, которые мог сохранить кто-то ещё
+  renderDdsKnownMappings();
+  renderOverview();
+  openDdsMapModal();           // остальные значения остаются в окне, пусто — закрывается
 }
 
 function renderOverview(){
@@ -4756,8 +4798,9 @@ function renderOverview(){
   const highDrr = data.perShop.filter(s=>s.t.avgDrr!==null && s.t.avgDrr!==undefined && s.t.avgDrr*100>OV_DRR_LIMIT);
   const names = list => list.length ? `<small>${list.map(s=>escapeHtml(s.label)).join(', ')}</small>` : '';
   const att = (n, lbl, onclick, extra='')=>`<a class="hm-att" onclick="${onclick}"><span>${lbl}${extra}</span><b class="${n>0?'neg':'pos'}">${n}</b></a>`;
-  const keys = ovKeyAlerts();
+  const keys = ovKeyAlerts(), ddsU = ovDdsUnknown();
   const attCard = `<div class="panel hm-card"><div class="hm-h">Требуют внимания</div>
+    ${ddsU.length ? att(ddsU.length, 'Расходы ОДДС без сопоставления', 'openDdsMapModal()', `<small>${ddsU.slice(0,3).map(u=>escapeHtml(u.name)).join(', ')}${ddsU.length>3?'…':''}</small>`) : ''}
     ${keys.length ? att(keys.length, 'Ключи API истекают', 'ovOpenKeyAlerts()', `<small>${keys.map(k=>escapeHtml(k.label+' '+k.brand+': '+k.date)).join(', ')}</small>`) : ''}
     ${att(missing.length, 'Товары без себестоимости', 'renderMissingCostModal()')}
     ${att(loss.length, 'Магазины в убытке', 'ovScrollToTable()', names(loss))}
