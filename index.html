@@ -3455,7 +3455,7 @@ function computeMonthTotalsOzon(key){
   // Считаем от заказанного, а не от продаж — это ближе к реальной эффективности рекламы
   // (реклама влияет на заказ, а не на то, что из заказанного потом реализовалось).
   const avgDrr = totals.orderedRub===0 ? null : totals.adSpend/totals.orderedRub;
-  const marginality = totals.salesRub===0? null : totals.ebitda/totals.salesRub;
+  const marginality = totals.salesRub>0 ? totals.ebitda/totals.salesRub : null; // при продажах ≤ 0 (возвраты больше продаж) процент бессмысленен — «—»
 
   return {...totals, avgDrr, salesByProduct, externalByField, marginality};
 }
@@ -3502,7 +3502,7 @@ function computeMonthTotalsWB(key){
   // ДРР месяца — взвешенный (реклама/сумма заказов за весь месяц), не среднее дневных ДРР.
   // Считаем от заказанного, а не от продаж — ближе к реальной эффективности рекламы.
   const avgDrr = totals.orderedRub===0 ? null : totals.adsMemo/totals.orderedRub;
-  const marginality = totals.salesRub===0? null : totals.ebitda/totals.salesRub;
+  const marginality = totals.salesRub>0 ? totals.ebitda/totals.salesRub : null; // при продажах ≤ 0 (возвраты больше продаж) процент бессмысленен — «—»
 
   return {...totals, avgDrr, salesByProduct, externalByField, marginality};
 }
@@ -3548,7 +3548,7 @@ function computeMonthTotalsYM(key){
   // ДРР месяца — взвешенный (реклама/сумма заказов за весь месяц), не среднее дневных ДРР.
   // Считаем от заказанного, а не от продаж — ближе к реальной эффективности рекламы.
   const avgDrr = totals.orderedRub===0 ? null : totals.adSpend/totals.orderedRub;
-  const marginality = totals.salesRub===0? null : totals.ebitda/totals.salesRub;
+  const marginality = totals.salesRub>0 ? totals.ebitda/totals.salesRub : null; // при продажах ≤ 0 (возвраты больше продаж) процент бессмысленен — «—»
 
   return {...totals, avgDrr, salesByProduct, externalByField, marginality};
 }
@@ -3576,7 +3576,7 @@ function computeMonthTotalsSite(key){
     EXTERNAL_FIELDS.forEach(([id])=>{ externalByField[id] += num((day.external||{})[id]); });
   });
 
-  const marginality = totals.salesRub===0? null : totals.ebitda/totals.salesRub;
+  const marginality = totals.salesRub>0 ? totals.ebitda/totals.salesRub : null; // при продажах ≤ 0 (возвраты больше продаж) процент бессмысленен — «—»
 
   return {...totals, avgDrr:null, salesByProduct, externalByField, marginality};
 }
@@ -3641,7 +3641,7 @@ function computeDailySeriesForSection(sectionId, monthKey){
       const c = calcDay(day);
       const expenseRub = platformExpenseForDay(day, c, type);
       const expensePct = (expenseRub!==null && c.salesRub) ? expenseRub/c.salesRub*100 : null;
-      const marginality = c.salesRub ? c.ebitda/c.salesRub*100 : null;
+      const marginality = c.salesRub>0 ? c.ebitda/c.salesRub*100 : null;
       const drrFrac = (c.drr===null || c.drr===undefined) ? null : c.drr;
       return {
         date: day.date,
@@ -3729,7 +3729,7 @@ function buildOverviewData(monthKey){
     adSpendTotal: sum(withPlatformExpense, adNumerator),
     orderedRubForDrr: sum(withPlatformExpense, s=>s.t.orderedRub),
   };
-  agg.marginality = agg.salesRub ? agg.ebitda/agg.salesRub*100 : null;
+  agg.marginality = agg.salesRub>0 ? agg.ebitda/agg.salesRub*100 : null;
   agg.platformExpensePct = agg.platformExpenseSalesRub ? agg.platformExpenseRub/agg.platformExpenseSalesRub*100 : null;
   agg.avgDrr = agg.orderedRubForDrr ? agg.adSpendTotal/agg.orderedRubForDrr*100 : null;
 
@@ -3745,7 +3745,7 @@ function buildOverviewData(monthKey){
     adSpendTotal: sum(withPlatformExpense, adNumeratorPrev),
     orderedRubForDrr: sum(withPlatformExpense, s=>s.tPrev.orderedRub),
   };
-  aggPrev.marginality = aggPrev.salesRub ? aggPrev.ebitda/aggPrev.salesRub*100 : null;
+  aggPrev.marginality = aggPrev.salesRub>0 ? aggPrev.ebitda/aggPrev.salesRub*100 : null;
   aggPrev.platformExpensePct = aggPrev.platformExpenseSalesRub ? aggPrev.platformExpenseRub/aggPrev.platformExpenseSalesRub*100 : null;
   aggPrev.avgDrr = aggPrev.orderedRubForDrr ? aggPrev.adSpendTotal/aggPrev.orderedRubForDrr*100 : null;
 
@@ -3784,7 +3784,7 @@ function renderOverviewTable(perShop){
     const drrCls = drrPct===null ? '' : (drrPct>20?'ov-cell-bad':(drrPct>=10?'ov-cell-warn':'ov-cell-good'));
     // Операционная прибыль (EBITDA) красим по той же логике маржинальности — это прибыль
     // ДО расходов вне площадки, поэтому убыток по чистой прибыли её не красит автоматически.
-    const ebitdaCls = marginality===null ? '' : marginCls;
+    const ebitdaCls = marginality===null ? (s.t.ebitda<0 ? 'ov-cell-bad' : '') : marginCls;
     return `<tr>
       <td><a class="ov-shop-link" onclick="switchSection('${s.id}')">${escapeHtml(s.label)}</a></td>
       <td>${fmtQty(Math.round(s.t.salesRub))} ₽</td>
@@ -4123,7 +4123,7 @@ function renderSummaryOzon(month, t){
       ${wfStep('Маржа', t.margin, t.margin>=0?'good':'bad')}
       ${wfStep('Налог', t.tax, 'tax')}
       ${wfStep('Операционная прибыль (EBITDA)', t.ebitda, t.ebitda>=0?'good':'bad')}
-      ${wfStepPct('Маржинальность', t.marginality, (t.marginality!==null && t.marginality>=0)?'good':'bad')}
+      ${wfStepPct('Маржинальность', t.marginality, t.marginality===null ? '' : (t.marginality>=0?'good':'bad'))}
       ${wfStep('Чистая прибыль', t.netProfit, 'final')}
     </div>
 
@@ -4184,7 +4184,7 @@ function renderSummaryWB(month, t){
       ${wfStep('Маржа', t.margin, t.margin>=0?'good':'bad')}
       ${wfStep('Налог', t.tax, 'tax')}
       ${wfStep('Операционная прибыль (EBITDA)', t.ebitda, t.ebitda>=0?'good':'bad')}
-      ${wfStepPct('Маржинальность', t.marginality, (t.marginality!==null && t.marginality>=0)?'good':'bad')}
+      ${wfStepPct('Маржинальность', t.marginality, t.marginality===null ? '' : (t.marginality>=0?'good':'bad'))}
       ${wfStep('Чистая прибыль', t.netProfit, 'final')}
     </div>
 
@@ -4246,7 +4246,7 @@ function renderSummaryYM(month, t){
       ${wfStep('Маржа', t.margin, t.margin>=0?'good':'bad')}
       ${wfStep('Налог', t.tax, 'tax')}
       ${wfStep('Операционная прибыль (EBITDA)', t.ebitda, t.ebitda>=0?'good':'bad')}
-      ${wfStepPct('Маржинальность', t.marginality, (t.marginality!==null && t.marginality>=0)?'good':'bad')}
+      ${wfStepPct('Маржинальность', t.marginality, t.marginality===null ? '' : (t.marginality>=0?'good':'bad'))}
       ${wfStep('Чистая прибыль', t.netProfit, 'final')}
     </div>
 
@@ -4308,7 +4308,7 @@ function renderSummarySite(month, t){
       ${wfStep('Маржа', t.margin, t.margin>=0?'good':'bad')}
       ${wfStep('Налог', t.tax, 'tax')}
       ${wfStep('Операционная прибыль (EBITDA)', t.ebitda, t.ebitda>=0?'good':'bad')}
-      ${wfStepPct('Маржинальность', t.marginality, (t.marginality!==null && t.marginality>=0)?'good':'bad')}
+      ${wfStepPct('Маржинальность', t.marginality, t.marginality===null ? '' : (t.marginality>=0?'good':'bad'))}
       ${wfStep('Чистая прибыль', t.netProfit, 'final')}
     </div>
 
@@ -4599,7 +4599,7 @@ function ovAggregate(series, n){
       }
     });
   });
-  a.marginality = a.salesRub ? a.ebitda/a.salesRub*100 : null;
+  a.marginality = a.salesRub>0 ? a.ebitda/a.salesRub*100 : null;
   a.avgDrr = a.orderedRubForDrr ? a.adSpendTotal/a.orderedRubForDrr*100 : null;
   a.platformExpensePct = a.platformExpenseSalesRub ? a.platformExpenseRub/a.platformExpenseSalesRub*100 : null;
   return a;
@@ -4941,7 +4941,7 @@ function askSum(rows, from, to){
     for(const k in r.parts) t.parts[k] = (t.parts[k]||0) + r.parts[k];
     if(r.filled) t.filled++;
   });
-  t.margin = t.sales ? t.ebitda/t.sales*100 : null;
+  t.margin = t.sales>0 ? t.ebitda/t.sales*100 : null;
   t.drr = t.ordered ? t.adDrr/t.ordered*100 : null;
   t.expensePct = t.sales>=1000 ? t.expense/t.sales*100 : null;
   return t;
@@ -5168,7 +5168,7 @@ function xlsxBuild(sheets){ // sheets: [{name, rows}]
 const EXPORT_HEAD = ['Продажи, ₽','Заказано, ₽','Заказано, шт','Комиссия и услуги площадки, ₽','Реклама, ₽','Себестоимость с самовыкупами, ₽','Налог, ₽','Расходы вне МП, ₽','Операционная прибыль (EBITDA), ₽','Чистая прибыль, ₽','Маржинальность, %','ДРР, %'];
 function exportRowVals(t){
   return [t.sales, t.ordered, t.orderedQty, t.platform, t.ad, t.cogs, t.tax, t.ext, t.ebitda, t.net,
-    t.sales ? t.ebitda/t.sales*100 : null, t.ordered ? t.adDrr/t.ordered*100 : null];
+    t.sales>0 ? t.ebitda/t.sales*100 : null, t.ordered ? t.adDrr/t.ordered*100 : null];
 }
 async function exportToExcel(){
   const btn = document.getElementById('exportBtn');
