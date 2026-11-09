@@ -497,6 +497,14 @@ tr.row-result td.metric-label{background:var(--l-result);box-shadow:inset var(--
 .wf-step.tax .val{color:var(--amber);}
 .wf-step.final{border-left-color:var(--blue);}
 .wf-step.final .val{color:var(--tx-strong);}
+/* подсказка с формулой при наведении на показатель каскада */
+.wf-step[data-tip]{position:relative;cursor:help;}
+.wf-step[data-tip] .lbl::after{content:"ⓘ";margin-left:5px;font-size:11px;color:var(--tx3);text-transform:none;}
+.wf-step[data-tip]:hover::after{content:attr(data-tip);position:absolute;top:calc(100% + 6px);left:8px;z-index:30;width:max-content;max-width:300px;
+  padding:9px 11px;border-radius:10px;background:var(--card2);color:var(--tx);border:1px solid var(--line2);box-shadow:0 10px 30px rgba(0,0,0,.18);
+  font-size:12px;font-weight:500;line-height:1.45;white-space:normal;text-transform:none;letter-spacing:0;}
+.wf-step[data-tip]:nth-last-child(-n+2):hover::after{left:auto;right:8px;}
+h3.subhead .subhead-total{margin-left:0;} /* тем же шрифтом, что и заголовок */
 
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:14px;}
 
@@ -4104,7 +4112,7 @@ function renderSummaryOzon(month, t){
   }
 
   const wfStep = (lbl,val,cls='')=>`
-    <div class="wf-step ${cls}"><div class="lbl">${lbl}</div><div class="val">${fmt(val)} ₽</div></div>`;
+    <div class="wf-step ${cls}"${plTipAttr(lbl)}><div class="lbl">${lbl}</div><div class="val">${fmt(val)} ₽</div></div>`;
 
   const productRows = currentSectionProducts().map(p=>{
     const qty = t.salesByProduct[p.id]||0;
@@ -4140,7 +4148,7 @@ function renderSummaryOzon(month, t){
 
     ${currentSectionProducts().length? productsFold('Продажи по товарам', productRows) : ''}
 
-    <h3 class="subhead">Расходы внутри Ozon за месяц</h3>
+    <h3 class="subhead">Расходы внутри Ozon за месяц <span class="subhead-total">— Итого ${fmt(t.reward+t.logistics+t.fines-t.extraPayments+t.storage+t.otherExpenses+t.adSpend)} ₽</span></h3>
     <div class="kpi-grid">
       <div class="kpi"><div class="lbl">Вознаграждение</div><div class="val">${fmt(t.reward)}</div></div>
       <div class="kpi"><div class="lbl">Логистика</div><div class="val">${fmt(t.logistics)}</div></div>
@@ -4151,7 +4159,7 @@ function renderSummaryOzon(month, t){
       <div class="kpi"><div class="lbl">Реклама</div><div class="val">${fmt(t.adSpend)}</div></div>
     </div>
 
-    <h3 class="subhead">Расходы вне Ozon за месяц</h3>
+    <h3 class="subhead">Расходы вне Ozon за месяц <span class="subhead-total">— Итого ${fmt(t.externalTotal)} ₽</span></h3>
     <div class="kpi-grid">${externalRows}</div>
   `;
 }
@@ -4165,7 +4173,7 @@ function renderSummaryWB(month, t){
   }
 
   const wfStep = (lbl,val,cls='')=>`
-    <div class="wf-step ${cls}"><div class="lbl">${lbl}</div><div class="val">${fmt(val)} ₽</div></div>`;
+    <div class="wf-step ${cls}"${plTipAttr(lbl)}><div class="lbl">${lbl}</div><div class="val">${fmt(val)} ₽</div></div>`;
 
   const productRows = currentSectionProducts().map(p=>{
     const qty = t.salesByProduct[p.id]||0;
@@ -4201,7 +4209,7 @@ function renderSummaryWB(month, t){
 
     ${currentSectionProducts().length? productsFold('Выкуплено по товарам', productRows) : ''}
 
-    <h3 class="subhead">Расходы внутри ВБ за месяц</h3>
+    <h3 class="subhead">Расходы внутри ВБ за месяц <span class="subhead-total">— Итого ${fmt(Math.abs(t.commission)+t.logistics+t.fines-t.extraPayments+t.storage+t.paidAcceptance+t.otherExpenses)} ₽</span></h3>
     <div class="kpi-grid">
       <div class="kpi"><div class="lbl">Выкуплено (после СПП и комиссии)</div><div class="val">${fmt(t.boughtNetRub)}</div></div>
       <div class="kpi"><div class="lbl">Комиссия WB (авто)</div><div class="val">${fmt(Math.abs(t.commission))}</div></div>
@@ -4213,7 +4221,7 @@ function renderSummaryWB(month, t){
       <div class="kpi"><div class="lbl">Прочие расходы</div><div class="val">${fmt(t.otherExpenses)}</div></div>
     </div>
 
-    <h3 class="subhead">Расходы вне ВБ за месяц</h3>
+    <h3 class="subhead">Расходы вне ВБ за месяц <span class="subhead-total">— Итого ${fmt(t.externalTotal)} ₽</span></h3>
     <div class="kpi-grid">${externalRows}</div>
   `;
 }
@@ -4227,7 +4235,7 @@ function renderSummaryYM(month, t){
   }
 
   const wfStep = (lbl,val,cls='')=>`
-    <div class="wf-step ${cls}"><div class="lbl">${lbl}</div><div class="val">${fmt(val)} ₽</div></div>`;
+    <div class="wf-step ${cls}"${plTipAttr(lbl)}><div class="lbl">${lbl}</div><div class="val">${fmt(val)} ₽</div></div>`;
 
   const productRows = currentSectionProducts().map(p=>{
     const qty = t.salesByProduct[p.id]||0;
@@ -4263,7 +4271,7 @@ function renderSummaryYM(month, t){
 
     ${currentSectionProducts().length? productsFold('Продажи по товарам', productRows) : ''}
 
-    <h3 class="subhead">Расходы внутри ЯМ за месяц</h3>
+    <h3 class="subhead">Расходы внутри ЯМ за месяц <span class="subhead-total">— Итого ${fmt(Math.abs(t.commission)+t.logistics+t.fines-t.extraPayments+t.storage+t.paidAcceptance+t.otherExpenses+t.adSpend)} ₽</span></h3>
     <div class="kpi-grid">
       <div class="kpi"><div class="lbl">Комиссия ЯМ</div><div class="val">${fmt(Math.abs(t.commission))}</div></div>
       <div class="kpi"><div class="lbl">Логистика</div><div class="val">${fmt(t.logistics)}</div></div>
@@ -4275,7 +4283,7 @@ function renderSummaryYM(month, t){
       <div class="kpi"><div class="lbl">Реклама</div><div class="val">${fmt(t.adSpend)}</div></div>
     </div>
 
-    <h3 class="subhead">Расходы вне ЯМ за месяц</h3>
+    <h3 class="subhead">Расходы вне ЯМ за месяц <span class="subhead-total">— Итого ${fmt(t.externalTotal)} ₽</span></h3>
     <div class="kpi-grid">${externalRows}</div>
   `;
 }
@@ -4289,7 +4297,7 @@ function renderSummarySite(month, t){
   }
 
   const wfStep = (lbl,val,cls='')=>`
-    <div class="wf-step ${cls}"><div class="lbl">${lbl}</div><div class="val">${fmt(val)} ₽</div></div>`;
+    <div class="wf-step ${cls}"${plTipAttr(lbl)}><div class="lbl">${lbl}</div><div class="val">${fmt(val)} ₽</div></div>`;
 
   const productRows = currentSectionProducts().map(p=>{
     const qty = t.salesByProduct[p.id]||0;
@@ -4320,7 +4328,7 @@ function renderSummarySite(month, t){
 
     ${currentSectionProducts().length? productsFold('Продажи по товарам', productRows) : ''}
 
-    <h3 class="subhead">Расходы вне Сайта за месяц</h3>
+    <h3 class="subhead">Расходы вне Сайта за месяц <span class="subhead-total">— Итого ${fmt(t.externalTotal)} ₽</span></h3>
     <div class="kpi-grid">${externalRows}</div>
   `;
 }
@@ -4331,8 +4339,29 @@ function fmt(v){
   if(v===null || v===undefined || isNaN(v)) return '—';
   return Number(v).toLocaleString('ru-RU', {minimumFractionDigits:2, maximumFractionDigits:2});
 }
+// Подсказки к каскаду P&L: как считается каждый показатель (формулы — те же, что в calcDayOzon/WB/YM/Site).
+function plTip(lbl){
+  const type = activeSectionType();
+  const mp = {ozon:'Ozon', wb:'ВБ', ym:'ЯМ', site:'Сайта'}[type] || 'площадки';
+  let rate = null; try{ rate = getTaxRateAt(todayStr()); }catch(e){}
+  const tips = {
+    'Продажа, ₽': type==='site' ? 'Продажи сайта за месяц.'
+      : type==='wb' ? 'Продажи WB за месяц по отчёту (до вычета комиссии), за минусом возвратов.'
+      : 'Продажи за месяц по начислениям площадки за минусом возвратов. Возврат учитывается в день возврата.',
+    'Доход на р/с': type==='site' ? 'Доход на р/с = Продажа (у сайта нет удержаний площадки)'
+      : 'Доход на р/с = Продажа − Расходы площадки',
+    'Маржа': type==='site' ? 'Маржа = Доход на р/с − Себестоимость проданного. Себестоимость проданного = количество × себестоимость товара на дату продажи.'
+      : 'Маржа = Доход на р/с − Себестоимость проданного − Самовыкупы + Себестоимость самовыкупов. Себестоимость проданного = количество × себестоимость товара на дату продажи.',
+    'Налог': 'Налог = Продажа × ставка налога'+(rate!==null ? ' (сейчас '+fmt(rate).replace(/,00$/,'')+'%)' : '')+'. Ставка задаётся на вкладке «Ежедневные данные».',
+    'Операционная прибыль (EBITDA)': 'Операционная прибыль (EBITDA) = Маржа − Налог',
+    'Маржинальность': 'Маржинальность = Операционная прибыль ÷ Продажа × 100. Если продажи за месяц ноль или в минусе — «—».',
+    'Чистая прибыль': 'Чистая прибыль = Операционная прибыль − Расходы вне '+mp,
+  };
+  return tips[lbl] || '';
+}
+function plTipAttr(lbl){ const t = plTip(lbl); return t ? ` data-tip="${escapeHtml(t)}"` : ''; }
 function wfStepPct(lbl, val, cls=''){
-  return `<div class="wf-step ${cls}"><div class="lbl">${lbl}</div><div class="val">${val===null?'—':fmt(val*100)+'%'}</div></div>`;
+  return `<div class="wf-step ${cls}"${plTipAttr(lbl)}><div class="lbl">${lbl}</div><div class="val">${val===null?'—':fmt(val*100)+'%'}</div></div>`;
 }
 
 // "Термометр" расходов внутри площадки — на что уходят проценты от продажи, наглядно.
